@@ -1,0 +1,44 @@
++ g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread
+BitEpi.cpp: In member function ‘void Dataset::ReadDataset(const char*)’:
+BitEpi.cpp:759:141: warning: format ‘%u’ expects argument of type ‘unsigned int’, but argument 2 has type ‘CsvRow*’ [-Wformat=]
+     printf("\n in row %u there are %u genotypes but there are %u samples in the first line\n", row, CsvParser_getNumFields(row)-1, numSample);
+                                                                                                                                             ^
+BitEpi.cpp: In member function ‘void EpiStat::Run()’:
+BitEpi.cpp:1653:67: warning: format ‘%f’ expects argument of type ‘double’, but argument 2 has type ‘int’ [-Wformat=]
+     printf("<<<<<<<<< Takes %10.0f seconds\n\n", i + 1, time_spent);
+                                                  ~~~~~            ^
+BitEpi.cpp:1653:67: warning: too many arguments for format [-Wformat-extra-args]
+BitEpi.cpp:1634:7: warning: ‘%s’ directive writing up to 1023 bytes into a region of size 1020 [-Wformat-overflow=]
+  void Run()
+       ^~~
+In file included from /usr/include/stdio.h:862:0,
+                 from BitEpi.cpp:40:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:34:43: note: ‘__builtin___sprintf_chk’ output 70 or more bytes (assuming 2116) into a destination of size 1024
+       __bos (__s), __fmt, __va_arg_pack ());
+                                           ^
+BitEpi.cpp:1634:7: warning: ‘%s’ directive writing up to 1023 bytes into a region of size 1021 [-Wformat-overflow=]
+  void Run()
+       ^~~
+In file included from /usr/include/stdio.h:862:0,
+                 from BitEpi.cpp:40:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:34:43: note: ‘__builtin___sprintf_chk’ output between 17 and 1049 bytes into a destination of size 1024
+       __bos (__s), __fmt, __va_arg_pack ());
+                                           ^
+BitEpi.cpp:1634:7: warning: ‘%s’ directive writing up to 1023 bytes into a region of size 1020 [-Wformat-overflow=]
+  void Run()
+       ^~~
+In file included from /usr/include/stdio.h:862:0,
+                 from BitEpi.cpp:40:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:34:43: note: ‘__builtin___sprintf_chk’ output 73 or more bytes (assuming 2119) into a destination of size 1024
+       __bos (__s), __fmt, __va_arg_pack ());
+                                           ^
+BitEpi.cpp:1634:7: warning: ‘%s’ directive writing up to 1023 bytes into a region of size 1021 [-Wformat-overflow=]
+  void Run()
+       ^~~
+In file included from /usr/include/stdio.h:862:0,
+                 from BitEpi.cpp:40:
+/usr/include/x86_64-linux-gnu/bits/stdio2.h:34:43: note: ‘__builtin___sprintf_chk’ output between 18 and 1050 bytes into a destination of size 1024
+       __bos (__s), __fmt, __va_arg_pack ());
+                                           ^
++ chmod 777 BitEpi.o
++ exit

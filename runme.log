@@ -1,0 +1,196 @@
++ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -b1 0 -b2 0 -b3 0 -b4 0 -a1 0 -a2 0 -a3 0 -a4 0 -sort
+
+
+=========================================
+
+ Given Arguments:
+
+ input           sampleData/data.csv
+ output          sampleData/out
+ threads         2
+ sort
+ beta1           0.000000
+ alpha1          0.000000
+ beta2           0.000000
+ alpha2          0.000000
+ beta3           0.000000
+ alpha3          0.000000
+ beta4           0.000000
+ alpha4          0.000000
+
+=========================================
+
+
+loading dataset sampleData/data.csv
+Counting lines in sampleData/data.csv
+
+There are       51 lines    in sampleData/data.csv
+There are       50 SNPs     in sampleData/data.csv
+There are     4000 samples  in sampleData/data.csv
+There are     2000 Cases    in sampleData/data.csv
+There are     2000 Controls in sampleData/data.csv
+
+Purity of the whole dataset is 0.500000 (baseline for Beta)
+
+Shift dataset by 2 bits compeleted
+Shift dataset by 4 bits compeleted
+Shift dataset by 6 bits compeleted
+
+>>>>>>>>>> Process                   50 1-SNP combinations
+Thread    1 starting ...
+Thread    0 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process                 1225 2-SNP combinations
+Thread    0 starting ...
+Thread    1 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process                19600 3-SNP combinations
+Thread    0 starting ...
+Thread    1 starting ...
+Thread    0 Finish
+Thread    1 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process               230300 4-SNP combinations
+Thread    0 starting ...
+Thread    1 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          1 seconds
+
+
+
+***Merge output of multiple threads (stored in separate files). In Linux it uses command line operation (also echo commands in stdout). In Windows it only merge the best output file.
+
+
+>>> cat sampleData/out.Beta.1.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A")}{print}' > sampleData/out.Beta.1.csv
+
+>>> rm sampleData/out.Beta.1.*.csv
+
+>>> cat sampleData/out.Alpha.1.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A")}{print}' > sampleData/out.Alpha.1.csv
+
+>>> rm sampleData/out.Alpha.1.*.csv
+
+>>> cat sampleData/out.Beta.2.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A,SNP_B")}{print}' > sampleData/out.Beta.2.csv
+
+>>> rm sampleData/out.Beta.2.*.csv
+
+>>> cat sampleData/out.Alpha.2.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A,SNP_B")}{print}' > sampleData/out.Alpha.2.csv
+
+>>> rm sampleData/out.Alpha.2.*.csv
+
+>>> cat sampleData/out.Beta.3.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A,SNP_B,SNP_C")}{print}' > sampleData/out.Beta.3.csv
+
+>>> rm sampleData/out.Beta.3.*.csv
+
+>>> cat sampleData/out.Alpha.3.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A,SNP_B,SNP_C")}{print}' > sampleData/out.Alpha.3.csv
+
+>>> rm sampleData/out.Alpha.3.*.csv
+
+>>> cat sampleData/out.Beta.4.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A,SNP_B,SNP_C,SNP_D")}{print}' > sampleData/out.Beta.4.csv
+
+>>> rm sampleData/out.Beta.4.*.csv
+
+>>> cat sampleData/out.Alpha.4.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A,SNP_B,SNP_C,SNP_D")}{print}' > sampleData/out.Alpha.4.csv
+
+>>> rm sampleData/out.Alpha.4.*.csv
+
+=============Finish=============
+
+
++ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -best
+
+
+=========================================
+
+ Given Arguments:
+
+ input           sampleData/data.csv
+ output          sampleData/out
+ threads         2
+ best
+
+=========================================
+
+
+loading dataset sampleData/data.csv
+Counting lines in sampleData/data.csv
+
+There are       51 lines    in sampleData/data.csv
+There are       50 SNPs     in sampleData/data.csv
+There are     4000 samples  in sampleData/data.csv
+There are     2000 Cases    in sampleData/data.csv
+There are     2000 Controls in sampleData/data.csv
+
+Purity of the whole dataset is 0.500000 (baseline for Beta)
+
+Shift dataset by 2 bits compeleted
+Shift dataset by 4 bits compeleted
+Shift dataset by 6 bits compeleted
+
+>>>>>>>>>> Process                   50 1-SNP combinations
+Thread    0 starting ...
+Thread    1 starting ...
+Thread    0 Finish
+Thread    1 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process                 1225 2-SNP combinations
+Thread    1 starting ...
+Thread    0 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process                19600 3-SNP combinations
+Thread    1 starting ...
+Thread    0 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          0 seconds
+
+
+
+>>>>>>>>>> Process               230300 4-SNP combinations
+Thread    0 starting ...
+Thread    1 starting ...
+Thread    1 Finish
+Thread    0 Finish
+<<<<<<<<< Takes          1 seconds
+
+
+
+***Merge output of multiple threads (stored in separate files). In Linux it uses command line operation (also echo commands in stdout). In Windows it only merge the best output file.
+
+
+=============Finish=============
+
+
++ set +x
+>>>>>>> Output files
+-rw-r--r-- 1 arash arash     661 Oct 16 21:13 sampleData/out.Alpha.1.csv
+-rw-r--r-- 1 arash arash   20794 Oct 16 21:13 sampleData/out.Alpha.2.csv
+-rw-r--r-- 1 arash arash  410448 Oct 16 21:13 sampleData/out.Alpha.3.csv
+-rw-r--r-- 1 arash arash 5739106 Oct 16 21:13 sampleData/out.Alpha.4.csv
+-rw-r--r-- 1 arash arash    5210 Oct 16 21:13 sampleData/out.best.csv
+-rw-r--r-- 1 arash arash     660 Oct 16 21:13 sampleData/out.Beta.1.csv
+-rw-r--r-- 1 arash arash   20793 Oct 16 21:13 sampleData/out.Beta.2.csv
+-rw-r--r-- 1 arash arash  410447 Oct 16 21:13 sampleData/out.Beta.3.csv
+-rw-r--r-- 1 arash arash 5739105 Oct 16 21:13 sampleData/out.Beta.4.csv
+<<<<<<<<<<<<<<<<<<<<
