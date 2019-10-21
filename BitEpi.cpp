@@ -78,19 +78,17 @@ double ***tripletBeta;
 double **PairBeta;
 double *SnpBeta;
 
+double  factorial(uint32 n)
+{
+	double res = 1;
+	for (uint32 i = 1; i <= n; i++)
+		res *= i;
+	return res;
+}
+
 double combination(uint32 v, uint32 o)
 {
-
-	if (o * 2 > v) o = v - o;
-
-	double nc = (double) v;
-
-	for (uint32 i = 2; i <= o; i++)
-	{
-		nc *= (v - i + 1);
-		nc /= i;
-	}
-	return nc;
+	return factorial(v) / (factorial(o) * factorial(v - o));
 }
 
 union WordByte
@@ -120,6 +118,11 @@ struct ARGS
 
 	bool sort;
 
+	// the start and end index of the first loop for each thread
+	uint32 *startIDX;
+	uint32 *endIDX;
+	double *thrComb;
+
 	ARGS()
 	{
 		memset(this, 0, sizeof(ARGS));
@@ -127,10 +130,95 @@ struct ARGS
 		maxOrder = 1;
 		for (uint32 o = 0; o < MAX_ORDER; o++)
 			beta[o] = alpha[o] = -1;
+		startIDX = NULL;
+		endIDX = NULL;
+		thrComb = NULL;
 	}
 
 	~ARGS()
 	{
+		if (startIDX)
+		{
+			delete[]startIDX;
+			delete[]endIDX;
+			delete[]thrComb;
+		}
+	}
+
+	void WorkloadDivider(uint32 order, uint32 numVar)
+	{
+		// what if order = 1
+
+		if (startIDX)
+		{
+			delete[]startIDX;
+			delete[]endIDX;
+			delete[]thrComb;
+		}
+
+		startIDX = new uint32[numThreads];
+		NULL_CHECK(startIDX);
+
+		endIDX = new uint32[numThreads];
+		NULL_CHECK(endIDX);
+
+		thrComb = new double[numThreads];
+		NULL_CHECK(thrComb);
+
+		uint32 lorder = order - 1;
+		uint32 idxThr = 0;
+		double sumComb = 0;
+		double xsumComb = combination(numVar, order);
+		startIDX[0] = lorder;
+		printf("\n>>>>> Identify the index range of the outer-loop for each thread such that each thread tests the same number of combinations (approximately)\n");
+		double numComb = combination(numVar, order);
+		printf("Total number of combinations to be tested:                 %20.0f\n", numComb);
+		double numCombThr = numComb / numThreads;
+		printf("Average number of combintions to be tested on each thread: %20.0f\n", numCombThr);
+		printf("\n\n");
+		printf("      Thread ID          Start            End   Combinations (to be tested on this thread)\n");
+		if (numThreads == 1)
+			startIDX[idxThr] = lorder;
+		else
+			for (uint32 i = lorder; i < numVar; i++)
+			{
+				double comb = combination(i, lorder);
+
+				if ((sumComb + comb) >= numCombThr)
+				{
+					double d1 = (sumComb + comb) - numCombThr;
+					double d2 = numCombThr - sumComb;
+
+					if (d1 < d2)
+					{
+						endIDX[idxThr] = i;
+						thrComb[idxThr] = (sumComb + comb);
+						xsumComb -= thrComb[idxThr];
+						printf("%15u%15u%15u%15.0f\n", idxThr, startIDX[idxThr], endIDX[idxThr], thrComb[idxThr]);
+						idxThr++;
+						startIDX[idxThr] = i + 1;
+						sumComb = 0;
+					}
+					else
+					{
+						endIDX[idxThr] = i - 1;
+						thrComb[idxThr] = sumComb;
+						xsumComb -= thrComb[idxThr];
+						printf("%15u%15u%15u%15.0f\n", idxThr, startIDX[idxThr], endIDX[idxThr], thrComb[idxThr]);
+						idxThr++;
+						startIDX[idxThr] = i;
+						sumComb = comb;
+					}
+					if (idxThr == (numThreads - 1))
+						break;
+				}
+				else
+					sumComb += comb;
+			}
+		endIDX[idxThr] = numVar - 1;
+		thrComb[idxThr] = xsumComb;
+		printf("%15u%15u%15u%15.0f\n", idxThr, startIDX[idxThr], endIDX[idxThr], thrComb[idxThr]);
+		printf("<<<<<\n");
 	}
 
 	void PrintHelp(char* exec)
@@ -402,14 +490,14 @@ void AllocateBeta(varIdx n, ARGS args)
 	}
 }
 
-void FreeBeta(varIdx n, ARGS args)
+void FreeBeta(varIdx n, ARGS *args)
 {
-	if (args.saveBeta[0])
+	if (args->saveBeta[0])
 	{
 		delete[] SnpBeta;
 	}
 
-	if (args.saveBeta[1])
+	if (args->saveBeta[1])
 	{
 		for (varIdx i = 0; i < n; i++)
 		{
@@ -418,7 +506,7 @@ void FreeBeta(varIdx n, ARGS args)
 		delete[] PairBeta;
 	}
 
-	if (args.saveBeta[2])
+	if (args->saveBeta[2])
 	{
 		for (varIdx i = 0; i < n; i++)
 		{
@@ -648,7 +736,7 @@ public:
 
 	Result *results;
 
-	void FreeMemory(ARGS args)
+	void FreeMemory(ARGS *args)
 	{
 		delete[] labels;
 
@@ -662,7 +750,7 @@ public:
 			delete[] wordCtrl[i];
 		}
 
-		if (args.best)
+		if (args->best)
 			delete[] results;
 	}
 
@@ -1311,64 +1399,60 @@ public:
 
 		AllocateThreadMemory();
 
-		printf("Thread %4u starting ...\n", threadIdx);
+		printf("Thread %4u starting ... [from:%15u to:%15u][%15.0f test combinations]\n", threadIdx, args.startIDX[id], args.endIDX[id], args.thrComb[id]);
 
 		varIdx idx[1];
 
-		for (idx[0] = 0; idx[0] < dataset->numVariable; idx[0]++)
+		for (idx[0] = args.startIDX[id]; idx[0] <= args.endIDX[id]; idx[0]++)
 		{
-			uint32 pt = (idx[0] % args.numThreads);
-			if (pt == threadIdx)
+#ifdef PTEST
+			clock_t xc1 = clock();
+#endif
+			ResetContigencyTable_1();
+#ifdef PTEST
+			clock_t xc2 = clock();
+#endif
+			OR_1x(idx[0]);
+#ifdef PTEST
+			clock_t xc3 = clock();
+#endif
+			// compute beta
+			double b = Gini_1();
+#ifdef PTEST
+			clock_t xc4 = clock();
+#endif
+			// report SNP combination if beta meet threshold
+			if (args.printBeta[OIDX])
+				if (b >= args.beta[OIDX])
+					fprintf(topBetaFile[threadIdx], "%f,%s\n", b, dataset->nameVariable[idx[0]]);
+
+			// Save Beta to compute Alpha of next order
+			if (args.saveBeta[OIDX])
+				SnpBeta[idx[0]] = b;
+
+			// compute Information Gained
+			if (args.computeAlpha[OIDX])
 			{
-#ifdef PTEST
-				clock_t xc1 = clock();
-#endif
-				ResetContigencyTable_1();
-#ifdef PTEST
-				clock_t xc2 = clock();
-#endif
-				OR_1x(idx[0]);
-#ifdef PTEST
-				clock_t xc3 = clock();
-#endif
-				// compute beta
-				double b = Gini_1();
-#ifdef PTEST
-				clock_t xc4 = clock();
-#endif
-				// report SNP combination if beta meet threshold
-				if (args.printBeta[OIDX])
-					if (b >= args.beta[OIDX])
-						fprintf(topBetaFile[threadIdx], "%f,%s\n", b, dataset->nameVariable[idx[0]]);
+				double max_p = dataset->setBeta;
 
-				// Save Beta to compute Alpha of next order
-				if (args.saveBeta[OIDX])
-					SnpBeta[idx[0]] = b;
+				double a = b - max_p;
 
-				// compute Information Gained
-				if (args.computeAlpha[OIDX])
-				{
-					double max_p = dataset->setBeta;
+				// report SNP combination if Alpha meet threshold
+				if (args.printAlpha[OIDX])
+					if (a >= args.alpha[OIDX])
+						fprintf(topAlphaFile[threadIdx], "%f,%s\n", a, dataset->nameVariable[idx[0]]);
 
-					double a = b - max_p;
-
-					// report SNP combination if Alpha meet threshold
-					if (args.printAlpha[OIDX])
-						if (a >= args.alpha[OIDX])
-							fprintf(topAlphaFile[threadIdx], "%f,%s\n", a, dataset->nameVariable[idx[0]]);
-
-					// compute the best
-					if (args.best)
-						dataset->results[threadIdx].Max_1(a, b, idx);
-				}
-#ifdef PTEST
-				clock_t xc5 = clock();
-				elapse[1] += xc2 - xc1;
-				elapse[2] += xc3 - xc2;
-				elapse[3] += xc4 - xc3;
-				elapse[4] += xc5 - xc4;
-#endif
+				// compute the best
+				if (args.best)
+					dataset->results[threadIdx].Max_1(a, b, idx);
 			}
+#ifdef PTEST
+			clock_t xc5 = clock();
+			elapse[1] += xc2 - xc1;
+			elapse[2] += xc3 - xc2;
+			elapse[3] += xc4 - xc3;
+			elapse[4] += xc5 - xc4;
+#endif
 		}
 
 		printf("Thread %4u Finish\n", threadIdx);
@@ -1382,58 +1466,130 @@ public:
 
 		AllocateThreadMemory();
 
-		printf("Thread %4u starting ...\n", threadIdx);
+		printf("Thread %4u starting ... [from:%15u to:%15u][%15.0f test combinations]\n", threadIdx, args.startIDX[id], args.endIDX[id], args.thrComb[id]);
 
 		varIdx idx[2];
 
-		for (idx[0] = 0; idx[0] < (dataset->numVariable - OIDX); idx[0]++)
+		for (idx[0] = args.startIDX[id]; idx[0] <= args.endIDX[id]; idx[0]++)
 		{
-			uint32 pt = (idx[0] % args.numThreads);
-			if (pt == threadIdx)
+			OR_1(idx[0]);
+			for (idx[1] = idx[0] + 1; idx[1] < dataset->numVariable; idx[1]++)
 			{
-				OR_1(idx[0]);
-				for (idx[1] = idx[0] + 1; idx[1] < dataset->numVariable; idx[1]++)
+#ifdef PTEST
+				clock_t xc1 = clock();
+#endif
+				ResetContigencyTable_2();
+#ifdef PTEST
+				clock_t xc2 = clock();
+#endif
+				OR_2x(idx[1]);
+#ifdef PTEST
+				clock_t xc3 = clock();
+#endif
+				// compute beta
+				double b = Gini_2();
+#ifdef PTEST
+				clock_t xc4 = clock();
+#endif
+				// report SNP combination if beta meet threshold
+				if (args.printBeta[OIDX])
+					if (b >= args.beta[OIDX])
+						fprintf(topBetaFile[threadIdx], "%f,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+
+				// Save Beta to compute Alpha of next order
+				if (args.saveBeta[OIDX])
+					PairBeta[idx[0]][idx[1]] = b;
+
+				// compute Information Gained
+				if (args.computeAlpha[OIDX])
+				{
+					double max_p = (SnpBeta[idx[1]] > SnpBeta[idx[0]]) ? SnpBeta[idx[1]] : SnpBeta[idx[0]];
+
+					double a = b - max_p;
+
+					// report SNP combination if Alpha meet threshold
+					if (args.printAlpha[OIDX])
+						if (a >= args.alpha[OIDX])
+							fprintf(topAlphaFile[threadIdx], "%f,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+
+					// compute the best
+					if (args.best)
+						dataset->results[threadIdx].Max_2(a, b, idx);
+				}
+#ifdef PTEST
+				clock_t xc5 = clock();
+				elapse[1] += xc2 - xc1;
+				elapse[2] += xc3 - xc2;
+				elapse[3] += xc4 - xc3;
+				elapse[4] += xc5 - xc4;
+#endif
+			}
+		}
+		
+		printf("Thread %4u Finish\n", threadIdx);
+		FreeThreadMemory();
+	}
+
+	void Epi_3(uint32 id)
+	{
+		const uint32 OIDX = 2; // Triplet
+		threadIdx = id;
+
+		AllocateThreadMemory();
+
+		printf("Thread %4u starting ... [from:%15u to:%15u][%15.0f test combinations]\n", threadIdx, args.startIDX[id], args.endIDX[id], args.thrComb[id]);
+
+		varIdx idx[3];
+
+		for (idx[0] = args.startIDX[id]; idx[0] <= args.endIDX[id]; idx[0]++)
+		{
+			OR_1(idx[0]);
+			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
+			{
+				OR_2(idx[1]);
+				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariable; idx[2]++)
 				{
 #ifdef PTEST
 					clock_t xc1 = clock();
 #endif
-					ResetContigencyTable_2();
+					ResetContigencyTable_3();
 #ifdef PTEST
 					clock_t xc2 = clock();
 #endif
-					OR_2x(idx[1]);
+					OR_3x(idx[2]);
 #ifdef PTEST
 					clock_t xc3 = clock();
 #endif
 					// compute beta
-					double b = Gini_2();
+					double b = Gini_3();
 #ifdef PTEST
 					clock_t xc4 = clock();
 #endif
 					// report SNP combination if beta meet threshold
 					if (args.printBeta[OIDX])
 						if (b >= args.beta[OIDX])
-							fprintf(topBetaFile[threadIdx], "%f,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+							fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
 
 					// Save Beta to compute Alpha of next order
 					if (args.saveBeta[OIDX])
-						PairBeta[idx[0]][idx[1]] = b;
+						tripletBeta[idx[0]][idx[1]][idx[2]] = b;
 
 					// compute Information Gained
 					if (args.computeAlpha[OIDX])
 					{
-						double max_p = (SnpBeta[idx[1]] > SnpBeta[idx[0]]) ? SnpBeta[idx[1]] : SnpBeta[idx[0]];
+						double max_p = (PairBeta[idx[0]][idx[1]] > PairBeta[idx[0]][idx[2]]) ? PairBeta[idx[0]][idx[1]] : PairBeta[idx[0]][idx[2]];
+						max_p = (PairBeta[idx[1]][idx[2]] > max_p) ? PairBeta[idx[1]][idx[2]] : max_p;
 
 						double a = b - max_p;
 
 						// report SNP combination if Alpha meet threshold
 						if (args.printAlpha[OIDX])
 							if (a >= args.alpha[OIDX])
-								fprintf(topAlphaFile[threadIdx], "%f,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+								fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
 
 						// compute the best
 						if (args.best)
-							dataset->results[threadIdx].Max_2(a, b, idx);
+							dataset->results[threadIdx].Max_3(a, b, idx);
 					}
 #ifdef PTEST
 					clock_t xc5 = clock();
@@ -1449,69 +1605,67 @@ public:
 		FreeThreadMemory();
 	}
 
-	void Epi_3(uint32 id)
+	void Epi_4(uint32 id)
 	{
-		const uint32 OIDX = 2; // Triplet
+		const uint32 OIDX = 3; // Quadlet
 		threadIdx = id;
 
 		AllocateThreadMemory();
 
-		printf("Thread %4u starting ...\n", threadIdx);
+		printf("Thread %4u starting ... [from:%15u to:%15u][%15.0f test combinations]\n", threadIdx, args.startIDX[id], args.endIDX[id], args.thrComb[id]);
 
-		varIdx idx[3];
+		varIdx idx[4];
 
-		for (idx[0] = 0; idx[0] < (dataset->numVariable - OIDX); idx[0]++)
+		for (idx[0] = args.startIDX[id]; idx[0] <= args.endIDX[id]; idx[0]++)
 		{
-			uint32 pt = (idx[0] % args.numThreads);
-			if (pt == threadIdx)
+			OR_1(idx[0]);
+			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
 			{
-				OR_1(idx[0]);
-				for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
+				OR_2(idx[1]);
+				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariable - (OIDX - 2)); idx[2]++)
 				{
-					OR_2(idx[1]);
-					for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariable; idx[2]++)
+					OR_3(idx[2]);
+					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariable; idx[3]++)
 					{
 #ifdef PTEST
 						clock_t xc1 = clock();
 #endif
-						ResetContigencyTable_3();
+						ResetContigencyTable_4();
 #ifdef PTEST
 						clock_t xc2 = clock();
 #endif
-						OR_3x(idx[2]);
+						OR_4x(idx[3]);
 #ifdef PTEST
 						clock_t xc3 = clock();
 #endif
 						// compute beta
-						double b = Gini_3();
+						double b = Gini_4();
 #ifdef PTEST
 						clock_t xc4 = clock();
 #endif
+
 						// report SNP combination if beta meet threshold
 						if (args.printBeta[OIDX])
 							if (b >= args.beta[OIDX])
-								fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
-
-						// Save Beta to compute Alpha of next order
-						if (args.saveBeta[OIDX])
-							tripletBeta[idx[0]][idx[1]][idx[2]] = b;
+								fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
 
 						// compute Information Gained
 						if (args.computeAlpha[OIDX])
 						{
-							double max_p = (PairBeta[idx[0]][idx[1]] > PairBeta[idx[0]][idx[2]]) ? PairBeta[idx[0]][idx[1]] : PairBeta[idx[0]][idx[2]];
-							max_p = (PairBeta[idx[1]][idx[2]] > max_p) ? PairBeta[idx[1]][idx[2]] : max_p;
+							double max_p = (tripletBeta[idx[0]][idx[1]][idx[2]] > tripletBeta[idx[0]][idx[1]][idx[3]]) ? tripletBeta[idx[0]][idx[1]][idx[2]] : tripletBeta[idx[0]][idx[1]][idx[3]];
+							max_p = (tripletBeta[idx[0]][idx[2]][idx[3]] > max_p) ? tripletBeta[idx[0]][idx[2]][idx[3]] : max_p;
+							max_p = (tripletBeta[idx[1]][idx[2]][idx[3]] > max_p) ? tripletBeta[idx[1]][idx[2]][idx[3]] : max_p;
 
 							double a = b - max_p;
 
 							// report SNP combination if Alpha meet threshold
 							if (args.printAlpha[OIDX])
 								if (a >= args.alpha[OIDX])
-									fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
+									fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
 
 							// compute the best
 							if (args.best)
-								dataset->results[threadIdx].Max_3(a, b, idx);
+								dataset->results[threadIdx].Max_4(a, b, idx);
 						}
 #ifdef PTEST
 						clock_t xc5 = clock();
@@ -1522,87 +1676,7 @@ public:
 #endif
 					}
 				}
-			}
-		}
-		printf("Thread %4u Finish\n", threadIdx);
-		FreeThreadMemory();
-	}
 
-	void Epi_4(uint32 id)
-	{
-		const uint32 OIDX = 3; // Quadlet
-		threadIdx = id;
-
-		AllocateThreadMemory();
-
-		printf("Thread %4u starting ...\n", threadIdx);
-
-		varIdx idx[4];
-
-		for (idx[0] = 0; idx[0] < (dataset->numVariable - OIDX); idx[0]++)
-		{
-			uint32 pt = (idx[0] % args.numThreads);
-			if (pt == threadIdx)
-			{
-				OR_1(idx[0]);
-				for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
-				{
-					OR_2(idx[1]);
-					for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariable - (OIDX - 2)); idx[2]++)
-					{
-						OR_3(idx[2]);
-						for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariable; idx[3]++)
-						{
-#ifdef PTEST
-							clock_t xc1 = clock();
-#endif
-							ResetContigencyTable_4();
-#ifdef PTEST
-							clock_t xc2 = clock();
-#endif
-							OR_4x(idx[3]);
-#ifdef PTEST
-							clock_t xc3 = clock();
-#endif
-							// compute beta
-							double b = Gini_4();
-#ifdef PTEST
-							clock_t xc4 = clock();
-#endif
-
-							// report SNP combination if beta meet threshold
-							if (args.printBeta[OIDX])
-								if (b >= args.beta[OIDX])
-									fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
-
-							// compute Information Gained
-							if (args.computeAlpha[OIDX])
-							{
-								double max_p = (tripletBeta[idx[0]][idx[1]][idx[2]] > tripletBeta[idx[0]][idx[1]][idx[3]]) ? tripletBeta[idx[0]][idx[1]][idx[2]] : tripletBeta[idx[0]][idx[1]][idx[3]];
-								max_p = (tripletBeta[idx[0]][idx[2]][idx[3]] > max_p) ? tripletBeta[idx[0]][idx[2]][idx[3]] : max_p;
-								max_p = (tripletBeta[idx[1]][idx[2]][idx[3]] > max_p) ? tripletBeta[idx[1]][idx[2]][idx[3]] : max_p;
-
-								double a = b - max_p;
-
-								// report SNP combination if Alpha meet threshold
-								if (args.printAlpha[OIDX])
-									if (a >= args.alpha[OIDX])
-										fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
-
-								// compute the best
-								if (args.best)
-									dataset->results[threadIdx].Max_4(a, b, idx);
-							}
-#ifdef PTEST
-							clock_t xc5 = clock();
-							elapse[1] += xc2 - xc1;
-							elapse[2] += xc3 - xc2;
-							elapse[3] += xc4 - xc3;
-							elapse[4] += xc5 - xc4;
-#endif
-						}
-					}
-				}
 			}
 		}
 
@@ -1635,22 +1709,22 @@ public:
 	{
 		AllocateBeta(dataset->numVariable, args);
 
-		for (int i = 0; i < MAX_ORDER; i++)
+		for (int o = 0; o < MAX_ORDER; o++)
 		{
-			if (args.computeBeta[i])
+			if (args.computeBeta[o])
 			{
 				time_t begin = time(NULL);
-				double numComb= combination(dataset->numVariable, i+1);
-				printf("\n\n>>>>>>>>>> Process %20.0f %u-SNP combinations\n", numComb, i + 1);
+				double numComb= combination(dataset->numVariable, o+1);
+				printf("\n\n>>>>>>>>>> Process %20.0f %u-SNP combinations\n", numComb, o + 1);
 
-
-				OpenFiles(i);
-				MultiThread(threadFunction[i]);
-				CloseFiles(i);
+				OpenFiles(o);
+				args.WorkloadDivider(o + 1, dataset->numVariable);
+				MultiThread(threadFunction[o]);
+				CloseFiles(o);
 
 				time_t end = time(NULL);
 				double time_spent = difftime(end, begin);
-				printf("<<<<<<<<< Takes %10.0f seconds\n\n", i + 1, time_spent);
+				printf("<<<<<<<<< Takes %10.0f seconds\n\n", o + 1, time_spent);
 			}
 		}
 		
@@ -1717,8 +1791,8 @@ public:
 			delete[]fn;
 		}
 
-		FreeBeta(dataset->numVariable, args);
-		dataset->FreeMemory(args);
+		FreeBeta(dataset->numVariable, &args);
+		dataset->FreeMemory(&args);
 	}
 };
 
