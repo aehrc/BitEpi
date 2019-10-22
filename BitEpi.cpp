@@ -1,6 +1,6 @@
 
-// Uncomment below line to perform performance test and see accurate timming of different part of the program.
-// It is only used for performance testing and may not be mainteined 
+// Uncomment below line to perform performance test and see accurate timing of different parts of the program.
+// It is only used for performance testing and may not be maintained 
 //#define PTEST
 
 //#define DEBUG
@@ -57,7 +57,7 @@ typedef unsigned long long int uint64;
 typedef int int32;
 
 typedef unsigned int varIdx;
-typedef unsigned short int sampleIdx; // this type used in contingency table. this table should be kept in cache. so choose the smallest possible type here. Note that short int is 16 bit and can deal with up to 2^16 (~65,000) samples.
+typedef unsigned short int sampleIdx; // This type used in contingency table. This table should be kept in the cache so choose the smallest possible type here. Note that short int is 16 bit and can deal with up to 2^16 (~65,000) samples.
 typedef unsigned long long int word; // for parallel processing
 
 									 // we use 2 bits (4 states) to represent a genotype. However a genotype has only 3 states.
@@ -944,7 +944,7 @@ public:
 
 
 		if (numSample >= pow(2, sizeof(sampleIdx) * 8))
-			ERROR("Change sampleIdx type to support number of samples exist in dataset");
+			ERROR("Change sampleIdx type to support the number of samples exist in dataset");
 
 		labels = new uint32[numSample];
 		NULL_CHECK(labels);
