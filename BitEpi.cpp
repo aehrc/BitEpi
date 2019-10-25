@@ -191,7 +191,7 @@ struct ARGS
 		uint32 idxJob = 0;
 		double sumComb = 0;
 		double xsumComb = combination(numVar, order);
-		jobStartIdx[0] = lorder;
+		jobStartIdx[0] = 0;
 		printf("\n>>>>> Identify the index range of the outer-loop for each job such that each job tests the same number of combinations (approximately)\n");
 		double numComb = combination(numVar, order);
 		printf("Total number of combinations to be tested:                 %20.0f\n", numComb);
@@ -199,17 +199,19 @@ struct ARGS
 		printf("Average number of combintions to be tested in each job:    %20.0f\n", avgJobNumCombinations);
 		printf("\n\n");
 		printf("         Job ID          Start            End   Combinations (to be tested in this job)\n");
+		
+		sumComb = combination(numVar - 1, lorder);
 		if (numJobs == 1)
-			jobStartIdx[idxJob] = lorder;
+			jobStartIdx[idxJob] = 0;
 		else
-			for (uint32 i = lorder; i < numVar; i++)
+			for (uint32 i = 1; i < numVar-lorder; i++)
 			{
-				double comb = combination(i, lorder);
+				double comb = combination(numVar - (i + 1), lorder);
 
 				if ((sumComb + comb) >= avgJobNumCombinations)
 				{
 					double d1 = (sumComb + comb) - avgJobNumCombinations;
-					double d2 = avgJobNumCombinations - sumComb;
+					double d2 = (avgJobNumCombinations > sumComb) ? (avgJobNumCombinations - sumComb) : (sumComb - avgJobNumCombinations);
 
 					if (d1 < d2)
 					{
@@ -237,7 +239,7 @@ struct ARGS
 				else
 					sumComb += comb;
 			}
-		jobEndIdx[idxJob] = numVar - 1;
+		jobEndIdx[idxJob] = numVar - order;
 		jobNumCombinations[idxJob] = xsumComb;
 		printf("%15u%15u%15u%15.0f\n", idxJob, jobStartIdx[idxJob], jobEndIdx[idxJob], jobNumCombinations[idxJob]);
 		printf("<<<<<\n");
