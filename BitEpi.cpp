@@ -88,7 +88,17 @@ double  factorial(uint32 n)
 
 double combination(uint32 v, uint32 o)
 {
-	return factorial(v) / (factorial(o) * factorial(v - o));
+
+	if (o * 2 > v) o = v - o;
+
+	double nc = (double) v;
+
+	for (uint32 i = 2; i <= o; i++)
+	{
+		nc *= (v - i + 1);
+		nc /= i;
+	}
+	return nc;
 }
 
 union WordByte
