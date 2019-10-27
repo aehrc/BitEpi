@@ -89,10 +89,10 @@ Average number of combintions to be tested in each job:                    9800
               0              0              9           9720
               1             10             47           9880
 <<<<<
-Thread    1 Job    1 starting ... [from:             10 to:             47][           9880 combinations]
 Thread    0 Job    0 starting ... [from:              0 to:              9][           9720 combinations]
-Thread    1 Finish
+Thread    1 Job    1 starting ... [from:             10 to:             47][           9880 combinations]
 Thread    0 Finish
+Thread    1 Finish
 <<<<<<<<< Takes          0 seconds
 
 
@@ -276,7 +276,7 @@ Thread    0 Job    0 starting ... [from:              0 to:              7][    
 Thread    1 Job    1 starting ... [from:              8 to:             46][         111930 combinations]
 Thread    1 Finish
 Thread    0 Finish
-<<<<<<<<< Takes          1 seconds
+<<<<<<<<< Takes          0 seconds
 
 
 
@@ -343,7 +343,7 @@ Thread    0 Job    0 starting ... [from:              0 to:              2][    
 Thread    1 Job    1 starting ... [from:              3 to:              5][          42614 combinations]
 Thread    1 Finish
 Thread    0 Finish
-<<<<<<<<< Takes          0 seconds
+<<<<<<<<< Takes          1 seconds
 
 
 
@@ -361,14 +361,14 @@ Merge Beta4 files...
 
 + set +x
 >>>>>>> Output files
--rw-rw-r-- 1 arash arash     661 Oct 25 16:35 sampleData/out.Alpha.1.csv
--rw-rw-r-- 1 arash arash   20794 Oct 25 16:35 sampleData/out.Alpha.2.csv
--rw-rw-r-- 1 arash arash  410448 Oct 25 16:35 sampleData/out.Alpha.3.csv
--rw-rw-r-- 1 arash arash 5739106 Oct 25 16:35 sampleData/out.Alpha.4.csv
--rw-rw-r-- 1 arash arash    5210 Oct 25 16:35 sampleData/out.best.csv
--rw-rw-r-- 1 arash arash     661 Oct 25 16:35 sampleData/out.Beta.1.csv
--rw-rw-r-- 1 arash arash   20794 Oct 25 16:35 sampleData/out.Beta.2.csv
--rw-rw-r-- 1 arash arash  410448 Oct 25 16:35 sampleData/out.Beta.3.csv
--rw-rw-r-- 1 arash arash 2283626 Oct 25 16:35 sampleData/out.Beta.4.0.1.csv
--rw-rw-r-- 1 arash arash 5739106 Oct 25 16:35 sampleData/out.Beta.4.csv
+-rw-rw-r-- 1 arash arash     661 Oct 28 10:57 sampleData/out.Alpha.1.csv
+-rw-rw-r-- 1 arash arash   20794 Oct 28 10:57 sampleData/out.Alpha.2.csv
+-rw-rw-r-- 1 arash arash  410448 Oct 28 10:57 sampleData/out.Alpha.3.csv
+-rw-rw-r-- 1 arash arash 5739106 Oct 28 10:57 sampleData/out.Alpha.4.csv
+-rw-rw-r-- 1 arash arash    5210 Oct 28 10:57 sampleData/out.best.csv
+-rw-rw-r-- 1 arash arash     661 Oct 28 10:57 sampleData/out.Beta.1.csv
+-rw-rw-r-- 1 arash arash   20794 Oct 28 10:57 sampleData/out.Beta.2.csv
+-rw-rw-r-- 1 arash arash  410448 Oct 28 10:57 sampleData/out.Beta.3.csv
+-rw-rw-r-- 1 arash arash 2283626 Oct 28 10:57 sampleData/out.Beta.4.0.1.csv
+-rw-rw-r-- 1 arash arash 5739106 Oct 28 10:57 sampleData/out.Beta.4.csv
 <<<<<<<<<<<<<<<<<<<<

@@ -187,6 +187,13 @@ struct ARGS
 		jobNumCombinations = new double[numJobs];
 		NULL_CHECK(jobNumCombinations);
 
+		for (int i = 0; i < numJobs; i++)
+		{
+			jobStartIdx[i] = 0;
+			jobEndIdx[i] = 0;
+			jobNumCombinations[i] = 0;
+		}
+
 		uint32 lorder = order - 1;
 		uint32 idxJob = 0;
 		double sumComb = 0;
@@ -1154,7 +1161,8 @@ public:
 struct ThreadData
 {
 	void *epiStat; // epi class
-	uint32 id; // thread index
+	uint32 threadId; // thread id
+	uint32 jobId; // job Id to be executed on that threads
 };
 
 class EpiStat
@@ -1561,11 +1569,11 @@ public:
 		return beta;
 	}
 
-	void Epi_1(uint32 id)
+	void Epi_1(ThreadData *td)
 	{
 		const uint32 OIDX = 0; // SNP
-		threadIdx = id;
-		jobIdx = threadIdx + args.firstJobIdx;
+		threadIdx = td->threadId;
+		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
 
@@ -1629,11 +1637,11 @@ public:
 		FreeThreadMemory();
 	}
 
-	void Epi_2(uint32 id)
+	void Epi_2(ThreadData *td)
 	{
 		const uint32 OIDX = 1; // Pair
-		threadIdx = id;
-		jobIdx = threadIdx + args.firstJobIdx;
+		threadIdx = td->threadId;
+		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
 
@@ -1701,11 +1709,11 @@ public:
 		FreeThreadMemory();
 	}
 
-	void Epi_3(uint32 id)
+	void Epi_3(ThreadData *td)
 	{
 		const uint32 OIDX = 2; // Triplet
-		threadIdx = id;
-		jobIdx = threadIdx + args.firstJobIdx;
+		threadIdx = td->threadId;
+		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
 
@@ -1777,11 +1785,11 @@ public:
 		FreeThreadMemory();
 	}
 
-	void Epi_4(uint32 id)
+	void Epi_4(ThreadData *td)
 	{
 		const uint32 OIDX = 3; // Quadlet
-		threadIdx = id;
-		jobIdx = threadIdx + args.firstJobIdx;
+		threadIdx = td->threadId;
+		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
 
@@ -1857,22 +1865,25 @@ public:
 		FreeThreadMemory();
 	}
 
-	void MultiThread(void *(*threadFunction) (void *))
+	void MultiThread(uint32 o)
 	{
 		pthread_t *threads = new pthread_t[args.jobsToDo];
 		ThreadData *td = new ThreadData[args.jobsToDo];
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
 			td[i].epiStat = (void *) new EpiStat(this);
-			td[i].id = i;
+			td[i].threadId = i;
+			td[i].jobId = i + args.firstJobIdx;
 		}
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
-			pthread_create(&threads[i], NULL, threadFunction, &td[i]);
+			if(args.jobNumCombinations[td[i].jobId] != 0)
+				pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
 		}
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
-			pthread_join(threads[i], NULL);
+			if (args.jobNumCombinations[td[i].jobId] != 0)
+				pthread_join(threads[i], NULL);
 		}
 	}
 
@@ -1889,7 +1900,7 @@ public:
 
 				OpenFiles(o);
 				args.WorkloadDivider(o + 1, dataset->numVariable);
-				MultiThread(threadFunction[o]);
+				MultiThread(o);
 				CloseFiles(o);
 
 				time_t end = time(NULL);
@@ -1996,7 +2007,7 @@ void *EpiThread_1(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
-	epiStat->Epi_1(td->id);
+	epiStat->Epi_1(td);
 	return NULL;
 }
 
@@ -2004,7 +2015,7 @@ void *EpiThread_2(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
-	epiStat->Epi_2(td->id);
+	epiStat->Epi_2(td);
 	return NULL;
 }
 
@@ -2012,7 +2023,7 @@ void *EpiThread_3(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
-	epiStat->Epi_3(td->id);
+	epiStat->Epi_3(td);
 	return NULL;
 }
 
@@ -2020,9 +2031,10 @@ void *EpiThread_4(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
-	epiStat->Epi_4(td->id);
+	epiStat->Epi_4(td);
 	return NULL;
 }
+
 
 int main(int argc, char *argv[])
 {
