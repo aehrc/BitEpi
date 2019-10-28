@@ -1577,8 +1577,6 @@ public:
 
 		AllocateThreadMemory();
 
-		printf("Thread %4u Job %4u starting ... [from:%15u to:%15u][%15.0f combinations]\n", threadIdx, jobIdx, args.jobStartIdx[jobIdx], args.jobEndIdx[jobIdx], args.jobNumCombinations[jobIdx]);
-
 		varIdx idx[1];
 
 		for (idx[0] = args.jobStartIdx[jobIdx]; idx[0] <= args.jobEndIdx[jobIdx]; idx[0]++)
@@ -1632,8 +1630,6 @@ public:
 			elapse[4] += xc5 - xc4;
 #endif
 		}
-
-		printf("Thread %4u Finish\n", threadIdx);
 		FreeThreadMemory();
 	}
 
@@ -1644,8 +1640,6 @@ public:
 		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
-
-		printf("Thread %4u Job %4u starting ... [from:%15u to:%15u][%15.0f combinations]\n", threadIdx, jobIdx, args.jobStartIdx[jobIdx], args.jobEndIdx[jobIdx], args.jobNumCombinations[jobIdx]);
 
 		varIdx idx[2];
 
@@ -1704,8 +1698,6 @@ public:
 #endif
 			}
 		}
-
-		printf("Thread %4u Finish\n", threadIdx);
 		FreeThreadMemory();
 	}
 
@@ -1716,8 +1708,6 @@ public:
 		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
-
-		printf("Thread %4u Job %4u starting ... [from:%15u to:%15u][%15.0f combinations]\n", threadIdx, jobIdx, args.jobStartIdx[jobIdx], args.jobEndIdx[jobIdx], args.jobNumCombinations[jobIdx]);
 
 		varIdx idx[3];
 
@@ -1781,7 +1771,6 @@ public:
 				}
 			}
 		}
-		printf("Thread %4u Finish\n", threadIdx);
 		FreeThreadMemory();
 	}
 
@@ -1792,8 +1781,6 @@ public:
 		jobIdx = td->jobId;
 
 		AllocateThreadMemory();
-
-		printf("Thread %4u Job %4u starting ... [from:%15u to:%15u][%15.0f combinations]\n", threadIdx, jobIdx, args.jobStartIdx[jobIdx], args.jobEndIdx[jobIdx], args.jobNumCombinations[jobIdx]);
 
 		varIdx idx[4];
 
@@ -1860,8 +1847,6 @@ public:
 
 			}
 		}
-
-		printf("Thread %4u Finish\n", threadIdx);
 		FreeThreadMemory();
 	}
 
@@ -1869,6 +1854,7 @@ public:
 	{
 		pthread_t *threads = new pthread_t[args.jobsToDo];
 		ThreadData *td = new ThreadData[args.jobsToDo];
+
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
 			td[i].epiStat = (void *) new EpiStat(this);
@@ -1877,14 +1863,21 @@ public:
 		}
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
-			if(args.jobNumCombinations[td[i].jobId] != 0)
+			if (args.jobNumCombinations[td[i].jobId] != 0)
+			{
 				pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
+			}
 		}
 		for (uint32 i = 0; i < args.jobsToDo; i++)
 		{
 			if (args.jobNumCombinations[td[i].jobId] != 0)
+			{
 				pthread_join(threads[i], NULL);
+			}
 		}
+
+		delete[] threads;
+		delete[] td;
 	}
 
 	void Run()
@@ -1895,9 +1888,12 @@ public:
 		{
 			if (args.computeBeta[o])
 			{
+				
+				printf("\n> %u-SNP exhaustive search", o + 1);
+				printf("\n> Processing %u jobs [%u..%u] in parallel\n", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
+				
 				time_t begin = time(NULL);
-				printf("\n\n>>>>>>>>>> Process jobs [%u..%u] in parallel of %uth order analysis\n", args.firstJobIdx, args.lastJobIdx, o + 1);
-
+				
 				OpenFiles(o);
 				args.WorkloadDivider(o + 1, dataset->numVariable);
 				MultiThread(o);
@@ -1905,7 +1901,7 @@ public:
 
 				time_t end = time(NULL);
 				double time_spent = difftime(end, begin);
-				printf("<<<<<<<<< Takes %10.0f seconds\n\n", time_spent);
+				printf("> All jobs are compeleted in %10.0f seconds\n\n", time_spent);
 			}
 		}
 
@@ -2007,7 +2003,16 @@ void *EpiThread_1(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
+
+	printf("Thread %5u processing Job %5u ... ", td->threadId, td->jobId);
+
+	time_t begin = time(NULL);
+
 	epiStat->Epi_1(td);
+
+	time_t end = time(NULL);
+	double time_spent = difftime(end, begin);
+	printf("Thread %5u processed Job %5u in %10.0f seconds ", td->threadId, td->jobId, time_spent);
 	return NULL;
 }
 
@@ -2015,7 +2020,16 @@ void *EpiThread_2(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
+
+	printf("Thread %5u processing Job %5u ... ", td->threadId, td->jobId);
+
+	time_t begin = time(NULL);
+
 	epiStat->Epi_2(td);
+
+	time_t end = time(NULL);
+	double time_spent = difftime(end, begin);
+	printf("Thread %5u processed Job %5u in %10.0f seconds ", td->threadId, td->jobId, time_spent);
 	return NULL;
 }
 
@@ -2023,7 +2037,16 @@ void *EpiThread_3(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
+
+	printf("Thread %5u processing Job %5u ... ", td->threadId, td->jobId);
+
+	time_t begin = time(NULL);
+
 	epiStat->Epi_3(td);
+
+	time_t end = time(NULL);
+	double time_spent = difftime(end, begin);
+	printf("Thread %5u processed Job %5u in %10.0f seconds ", td->threadId, td->jobId, time_spent);
 	return NULL;
 }
 
@@ -2031,7 +2054,16 @@ void *EpiThread_4(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
 	EpiStat *epiStat = (EpiStat *)td->epiStat;
+
+	printf("Thread %5u processing Job %5u ...\n", td->threadId, td->jobId);
+
+	time_t begin = time(NULL);
+
 	epiStat->Epi_4(td);
+
+	time_t end = time(NULL);
+	double time_spent = difftime(end, begin);
+	printf("Thread %5u processed Job %5u in %10.0f seconds\n", td->threadId, td->jobId, time_spent);
 	return NULL;
 }
 
