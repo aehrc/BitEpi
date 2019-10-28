@@ -25,21 +25,11 @@ https://github.com/bhosking/bitepi-python
 | -a3 [thr]      | Perform 3-SNP alpha test with the given threshold [thr]                                         |
 | -a4 [thr]      | Perform 4-SNP alpha test with the given threshold [thr]                                         |
 
-# Command-Line Interface (CLI) Arguments for Cluster/Cloud mode:
-| Argument       | Description                                                                                     |
-|----------------|-------------------------------------------------------------------------------------------------|
-| -c             | Cluster/Cloud Mode                                                                              |
-| -j [int]       | Total number of jobs (best value: total number of threads in the cluster)                       |
-| -f [int]       | First job index to be processed on this computer (starting from 0)                              |
-| -t [int]       | Number of jobs in parallel on this computer (best value: number of threads on this computer)    |
-
 **notes**
 - [thr] is the threshold between 0 and 1 (on alpha and beta). All SNPs or interactive SNPs that exceed the threshold [thr] will be listed in the output file. 
 - [thr] is optional and if you don't pass a [thr] the program computes the metric but it does not report anything (does not create output file). For performance testing only.
 - If you want all interactions set thr to 0.
 - If you set thr to 1 the program creates an empty output file.
-- The best mode does not work yet with the cluster mode.
-- if t>j-f then the program runs the remaining jobs in parallel. For example, if there are 100 jobs and the first job index is 95, only 5 jobs left to be done [95,96,97,98 and 99]. In this case, if you set the -t to be larger than 5 (i.e 20), the program only runs the remaining 5 jobs in parallel (use 5 parallel threads)
 
 **Input Format**
 - The first row includes labels: 1 and 0 for cases and controls respectively
