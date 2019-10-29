@@ -2562,9 +2562,9 @@ void MasterProgram(ARGS args)
 			fprintf(runme, "cd %s\n", computeNodes[i].dir);
 			fprintf(runme, "%s\n", "git clone https://github.com/aehrc/BitEpi.git");
 			fprintf(runme, "%s\n", "cd BitEpi");
-			fprintf(runme, "%s\n", "g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread -DV2");
+			fprintf(runme, "%s\n", "g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread -DV2 &> c.log");
 			fprintf(runme, "%s\n", "chmod 777 BitEpi.o");
-			fprintf(runme, "./BitEpi.o -i ../%s -o %s -c -j %u -f %u -t %u %s > %s.%u.log\n", args.input, args.output, totalThreads, computeNodes[i].start, computeNodes[i].threads, args.clusterCmd, args.output, i);
+			fprintf(runme, "./BitEpi.o -i ../%s -o %s -c -j %u -f %u -t %u %s > %s.%u.log\n", args.input, args.output, totalThreads, computeNodes[i].start+1, computeNodes[i].threads, args.clusterCmd, args.output, i);
 			fprintf(runme, "%s\n", "echo \"Done\" > Done"); 
 			fclose(runme);
 
