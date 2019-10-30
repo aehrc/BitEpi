@@ -1,4 +1,4 @@
-+ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -b4 0.3 -a4 0.1 -sort
++ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -b4 0.51 -a4 0.1 -sort
 
 =============Start=============
 
@@ -11,7 +11,7 @@
  output               sampleData/out
  threads              2
  sort
- beta4                0.300000
+ beta4                0.510000
  alpha4               0.100000
 
 =========================================
@@ -49,9 +49,9 @@
 
  Thread     2 processing Job     2 ...
 
- Thread     2 processed Job     2 in          1 seconds (      9805 tests per second)
-
  Thread     1 processed Job     1 in          1 seconds (      9795 tests per second)
+
+ Thread     2 processed Job     2 in          1 seconds (      9805 tests per second)
 
  All jobs are compeleted in          1 seconds (     19600 tests per second)
 
@@ -69,19 +69,17 @@
  diffToAvg      : Difference to average number of combination to be tested in each job
  AccumDiffToAvg : Accumulative diffToAvg
  Job ID (    S1,    S2) (    E1,    E2)    Combinations       diffToAvg  AccumDiffToAvg
-      1 (     1,     2) (     8,    22)          115101             -49             -49
-      2 (     8,    23) (    47,    48)          115199              49               0
-
- Thread     2 processing Job     2 ...
+      1 (     1,     2) (     8,    22)          115094             -56             -56
+      2 (     8,    23) (    47,    48)          115206              56               0
 
  Thread     1 processing Job     1 ...
 
- Thread     1 processed Job     1 in          1 seconds (    115101 tests per second)
+ Thread     2 processing Job     2 ...
 
- >>> counted: 115094 expected          115101
- Thread     2 processed Job     2 in          1 seconds (    115199 tests per second)
+ Thread     1 processed Job     1 in          1 seconds (    115094 tests per second)
 
- >>> counted: 115206 expected          115199
+ Thread     2 processed Job     2 in          1 seconds (    115206 tests per second)
+
  All jobs are compeleted in          1 seconds (    230300 tests per second)
 
  Merge output of multiple threads (stored in separate files). In Linux it uses command line operation (also echo commands in stdout). In Windows it only merge the best output file.
@@ -210,7 +208,7 @@ Job:     1 process              50 SNPs (         1 ...         50)
 
 + set +x
 >>>>>>> Output files
--rw-rw-r-- 1 arash arash      30 Oct 28 23:58 sampleData/out.Alpha.4.csv
--rw-rw-r-- 1 arash arash    5210 Oct 28 23:58 sampleData/out.best.csv
--rw-rw-r-- 1 arash arash 5739106 Oct 28 23:58 sampleData/out.Beta.4.csv
+-rw-rw-r-- 1 arash arash     30 Oct 30 12:43 sampleData/out.Alpha.4.csv
+-rw-rw-r-- 1 arash arash   5210 Oct 30 12:43 sampleData/out.best.csv
+-rw-rw-r-- 1 arash arash 527805 Oct 30 12:43 sampleData/out.Beta.4.csv
 <<<<<<<<<<<<<<<<<<<<
