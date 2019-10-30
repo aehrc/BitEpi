@@ -89,19 +89,26 @@ double  factorial(uint32 n)
 	return res;
 }
 
-double combination(uint32 v, uint32 o)
+double Combination(uint32 v, uint32 o)
 {
-
-	if (o * 2 > v) o = v - o;
-
 	double nc = (double)v;
 
-	for (uint32 i = 2; i <= o; i++)
+	if (o == 1)
+		return nc;
+
+	if (o == v)
+		return 1;
+
+	if (o > v) 
+		return 0;
+
+	switch (o)
 	{
-		nc *= (v - i + 1);
-		nc /= i;
+	case 2: return (nc * (nc - 1)) / 2;
+	case 3: return (nc * (nc - 1) * (nc - 2)) / 6;
+	case 4: return (nc * (nc - 1) * (nc - 2) * (nc - 3)) / 24;
+	default: ERROR("Does not support combination above 4");
 	}
-	return nc;
 }
 
 union WordByte
@@ -239,8 +246,8 @@ struct ARGS
 			{
 				for (uint32 j = i + 1; j <= (numVar - order + 1); j++)
 				{
-					double comb = combination(numVar - (j + 1), lorder);
-
+					double comb = Combination(numVar - (j + 1), lorder);
+					
 					if ((sumComb + comb) >= avgJobNumCombinations)
 					{
 						if(aDiff < 0)
@@ -328,7 +335,7 @@ struct ARGS
 			double aDiff = 0; // Accumulative difference to average.
 			for (uint32 i = 0; i <= (numVar - order); i++)
 			{
-				double comb = combination(numVar - (i + 1), lorder);
+				double comb = Combination(numVar - (i + 1), lorder);
 
 				if ((sumComb + comb) >= avgJobNumCombinations)
 				{
@@ -384,7 +391,7 @@ struct ARGS
 
 		memset(jobs, 0, sizeof(JOB)*numJobs);
 
-		numComb = combination(numVar, order);
+		numComb = Combination(numVar, order);
 		avgJobNumCombinations = numComb / numJobs;
 		printf("\n Total   number of %u-SNP combinations to be tested:         %20.0f", order, numComb);
 		printf("\n Total   number of jobs:                                    %20u", numJobs);
@@ -402,7 +409,6 @@ struct ARGS
 			else
 				printf("\n Reduce the number of thread to %u", iJob);
 			printf("\n");
-			ERROR("Exit")
 		}
 
 		printf("\n Breaking the program into similar sized jobs");
