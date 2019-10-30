@@ -1,4 +1,114 @@
-+ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -b4 0.51 -a4 0.1 -sort
++ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 1 -b1 10 -a1 0.001 -b2 0.502 -a2 35 -a3 0.003
+
+=============Start=============
+
+
+
+
+=========================================
+ Given Arguments:
+ input                sampleData/data.csv
+ output               sampleData/out
+ threads              1
+ beta1                10.000000
+ alpha1               0.001000
+ beta2                0.502000
+ alpha2               35.000000
+ alpha3               0.003000
+
+=========================================
+
+
+ loading dataset sampleData/data.csv
+ Counting lines in sampleData/data.csv
+ There are       51 lines    in sampleData/data.csv
+ There are       50 SNPs     in sampleData/data.csv
+ There are     4000 samples  in sampleData/data.csv
+ There are     2000 Cases    in sampleData/data.csv
+ There are     2000 Controls in sampleData/data.csv
+ Purity of the whole dataset is 0.500000 (baseline for Beta)
+ Shift dataset by 2 bits compeleted
+ Shift dataset by 4 bits compeleted
+ >>>>>> 1-SNP exhaustive search
+
+ Processing 1 jobs [0..0] in parallel
+ Total   number of 1-SNP combinations to be tested:                           50
+ Total   number of jobs:                                                       1
+ Average number of combintions to be tested in each job:                      50
+
+ Breaking the program into similar sized jobs
+Job:     1 process              50 SNPs (         1 ...         50)
+
+ Thread     1 processing Job     1 ...
+
+ Thread     1 processed Job     1 in          1 seconds (        50 tests per second)
+
+ All jobs are compeleted in          1 seconds (        50 tests per second)
+
+ >>>>>> 2-SNP exhaustive search
+
+ Processing 1 jobs [0..0] in parallel
+ Total   number of 2-SNP combinations to be tested:                         1225
+ Total   number of jobs:                                                       1
+ Average number of combintions to be tested in each job:                    1225
+
+ Breaking the program into similar sized jobs
+ Outer  loop iterates from S1 to E1
+ Second loop iterates from S2 to E2
+ Combinations   : SNP combinations to be tested in each job
+ diffToAvg      : Difference to average number of combination to be tested in each job
+ AccumDiffToAvg : Accumulative diffToAvg
+ Job ID (    S1,    S2) (    E1,    E2)    Combinations       diffToAvg  AccumDiffToAvg
+      1 (     1,     2) (    49,    50)            1225               0               0
+
+ Thread     1 processing Job     1 ...
+
+ Thread     1 processed Job     1 in          1 seconds (      1225 tests per second)
+
+ All jobs are compeleted in          1 seconds (      1225 tests per second)
+
+ >>>>>> 3-SNP exhaustive search
+
+ Processing 1 jobs [0..0] in parallel
+ Total   number of 3-SNP combinations to be tested:                        19600
+ Total   number of jobs:                                                       1
+ Average number of combintions to be tested in each job:                   19600
+
+ Breaking the program into similar sized jobs
+ Outer  loop iterates from S1 to E1
+ Second loop iterates from S2 to E2
+ Combinations   : SNP combinations to be tested in each job
+ diffToAvg      : Difference to average number of combination to be tested in each job
+ AccumDiffToAvg : Accumulative diffToAvg
+ Job ID (    S1,    S2) (    E1,    E2)    Combinations       diffToAvg  AccumDiffToAvg
+      1 (     1,     2) (    48,    49)           19600               0               0
+
+ Thread     1 processing Job     1 ...
+
+ Thread     1 processed Job     1 in          1 seconds (     19600 tests per second)
+
+ All jobs are compeleted in          1 seconds (     19600 tests per second)
+
+ Merge output of multiple threads (stored in separate files). In Linux it uses command line operation (also echo commands in stdout). In Windows it only merge the best output file.
+ Merge Beta1 files...
+ >>> cat sampleData/out.Beta.1.*.csv   | awk 'BEGIN{print("Beta,SNP_A")}{print}' > sampleData/out.Beta.1.csv
+ >>> rm sampleData/out.Beta.1.*.csv
+ Merge Alpha1 files...
+ >>> cat sampleData/out.Alpha.1.*.csv   | awk 'BEGIN{print("Alpha,SNP_A")}{print}' > sampleData/out.Alpha.1.csv
+ >>> rm sampleData/out.Alpha.1.*.csv
+ Merge Beta2 files...
+ >>> cat sampleData/out.Beta.2.*.csv   | awk 'BEGIN{print("Beta,SNP_A,SNP_B")}{print}' > sampleData/out.Beta.2.csv
+ >>> rm sampleData/out.Beta.2.*.csv
+ Merge Alpha2 files...
+ >>> cat sampleData/out.Alpha.2.*.csv   | awk 'BEGIN{print("Alpha,SNP_A,SNP_B")}{print}' > sampleData/out.Alpha.2.csv
+ >>> rm sampleData/out.Alpha.2.*.csv
+ Merge Alpha3 files...
+ >>> cat sampleData/out.Alpha.3.*.csv   | awk 'BEGIN{print("Alpha,SNP_A,SNP_B,SNP_C")}{print}' > sampleData/out.Alpha.3.csv
+ >>> rm sampleData/out.Alpha.3.*.csv
+=============Finish=============
+
+
++ ./BitEpi.o -i sampleData/data.csv -o sampleData/out -t 2 -b3 0.505 -b4 40 -a4 30 -sort
 
 =============Start=============
 
@@ -11,8 +121,9 @@
  output               sampleData/out
  threads              2
  sort
- beta4                0.510000
- alpha4               0.100000
+ beta3                0.505000
+ beta4                40.000000
+ alpha4               30.000000
 
 =========================================
 
@@ -49,9 +160,9 @@
 
  Thread     2 processing Job     2 ...
 
- Thread     1 processed Job     1 in          1 seconds (      9795 tests per second)
-
  Thread     2 processed Job     2 in          1 seconds (      9805 tests per second)
+
+ Thread     1 processed Job     1 in          1 seconds (      9795 tests per second)
 
  All jobs are compeleted in          1 seconds (     19600 tests per second)
 
@@ -76,15 +187,18 @@
 
  Thread     2 processing Job     2 ...
 
- Thread     1 processed Job     1 in          1 seconds (    115094 tests per second)
-
  Thread     2 processed Job     2 in          1 seconds (    115206 tests per second)
+
+ Thread     1 processed Job     1 in          1 seconds (    115094 tests per second)
 
  All jobs are compeleted in          1 seconds (    230300 tests per second)
 
  Merge output of multiple threads (stored in separate files). In Linux it uses command line operation (also echo commands in stdout). In Windows it only merge the best output file.
+ Merge Beta3 files...
+ >>> cat sampleData/out.Beta.3.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A,SNP_B,SNP_C")}{print}' > sampleData/out.Beta.3.csv
+ >>> rm sampleData/out.Beta.3.*.csv
  Merge Beta4 files...
- >>> cat sampleData/out.Beta.4.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A,SNP_B,SNP_C,SNP_D")}{print}' > sampleData/out.Beta.4.csv
+ >>> cat sampleData/out.Beta.4.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Beta,SNP_A,SNP_B,SNP_C,SNP_D")}{print}' > sampleData/out.Beta.4.csv
  >>> rm sampleData/out.Beta.4.*.csv
  Merge Alpha4 files...
  >>> cat sampleData/out.Alpha.4.*.csv | sort -g -r -k1,1 -t ',' | awk 'BEGIN{print("Alpha,SNP_A,SNP_B,SNP_C,SNP_D")}{print}' > sampleData/out.Alpha.4.csv
@@ -208,7 +322,13 @@ Job:     1 process              50 SNPs (         1 ...         50)
 
 + set +x
 >>>>>>> Output files
--rw-rw-r-- 1 arash arash     30 Oct 30 12:43 sampleData/out.Alpha.4.csv
--rw-rw-r-- 1 arash arash   5210 Oct 30 12:43 sampleData/out.best.csv
--rw-rw-r-- 1 arash arash 527805 Oct 30 12:43 sampleData/out.Beta.4.csv
+-rw-rw-r-- 1 arash arash   38 Oct 31 01:18 sampleData/out.Alpha.1.csv
+-rw-rw-r-- 1 arash arash  617 Oct 31 01:18 sampleData/out.Alpha.2.csv
+-rw-rw-r-- 1 arash arash 6543 Oct 31 01:18 sampleData/out.Alpha.3.csv
+-rw-rw-r-- 1 arash arash 1597 Oct 31 01:18 sampleData/out.Alpha.4.csv
+-rw-rw-r-- 1 arash arash 5210 Oct 31 01:18 sampleData/out.best.csv
+-rw-rw-r-- 1 arash arash  139 Oct 31 01:18 sampleData/out.Beta.1.csv
+-rw-rw-r-- 1 arash arash  885 Oct 31 01:18 sampleData/out.Beta.2.csv
+-rw-rw-r-- 1 arash arash 9058 Oct 31 01:18 sampleData/out.Beta.3.csv
+-rw-rw-r-- 1 arash arash 2205 Oct 31 01:18 sampleData/out.Beta.4.csv
 <<<<<<<<<<<<<<<<<<<<
