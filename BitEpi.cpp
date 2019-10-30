@@ -45,13 +45,13 @@ void pthread_join(pthread_t thread, void **retval)
 #include "math.h"
 #include "csvparser.h"
 
+//#define V2
 #define MIN_COMB_IN_JOB 9000.0
+#define MIN_TOP 1000
 
 #ifdef PTEST
 clock_t elapse[100];
 #endif
-
-//#define V2
 
 typedef unsigned char uint8;
 typedef unsigned short int uint16;
@@ -176,6 +176,10 @@ struct ARGS
 	uint32 firstJobIdx; // 0 <= firstJobIdx <= numJobs-1
 	uint32 lastJobIdx;  // firstJobIdx <= lastJobIdx <= numJobs-1
 	uint32 jobsToDo;    // number of jobs to do on this computer (could be less than number of threads)
+
+	double bufRatio;
+	bool topNbeta[MAX_ORDER]; // the the beta thrashold is top count
+	bool topNalpha[MAX_ORDER]; // the the alpha thrashold is top count
 	
 	bool   master;
 	char   configFileName[1024];
@@ -197,22 +201,15 @@ struct ARGS
 		memset(this, 0, sizeof(ARGS));
 
 		numThreads = 1;
-		clusterMode = false;
 		firstJobIdx = -1;
 		numJobs = -1;
-		best = false;
-		sort = false;
-		maxOrder = 0;
 		for (uint32 o = 0; o < MAX_ORDER; o++)
 			beta[o] = alpha[o] = -1;
-		jobs = NULL;
-		master = false;
-		inputGiven = false;
 		srand(time(NULL));
 		sprintf(output, "OUTPUT_BitEpi_%012u", rand());
-		aws = false;
 		sprintf(sshCmd, "ssh ");
 		sprintf(scpCmd, "scp ");
+		bufRatio = 10;
 	}
 
 	~ARGS()
@@ -409,6 +406,7 @@ struct ARGS
 			else
 				printf("\n Reduce the number of thread to %u", iJob);
 			printf("\n");
+			ERROR("So Many Threads");
 		}
 
 		printf("\n Breaking the program into similar sized jobs");
@@ -480,11 +478,16 @@ struct ARGS
 		printf(" -a3 [thr]  Compute 3-SNP alpha test\n");
 		printf(" -a4 [thr]  Compute 4-SNP alpha test\n");
 		printf("\n");
-		printf("* thr is the threshold and is optional.\n");
+		printf("* if thr<1 then thr is the min threshold on alpha and beta test.\n");
+		printf("* if thr>=1 then thr is the number of top hits in alpha and beta test.\n");
+		printf("* if thr>=1 and more than 1 thread is used each thread reports\n");
+		printf("  thr top hits. So (t*thr) top hits will be reported.\n");
+		printf("  You can use -sort option and only consider the top thr record.\n");
+		printf("* thr is optional.\n");
 		printf("  If you don't pass a thr the program computes the metric but\n");
 		printf("  it does not report anything (performance testing).\n");
-		printf("* 0<thr<1.\n");
 		printf("* if you want all interactions set thr to 0.\n");
+		//printf("* -r [float] is a buffer ratio set to 2 by default.\n");
 		printf("\n==========================================================\n");
 		ERROR("Please enter valid arguments");
 		return;
@@ -526,6 +529,8 @@ struct ARGS
 							sprintf(clusterCmd, "-b%u %f", o+1, d);
 							beta[o] = d;
 							printBeta[o] = true;
+							if (beta[o] >= 1)
+								topNbeta[o] = true;
 							i++;
 						}
 					}
@@ -564,6 +569,8 @@ struct ARGS
 							sprintf(clusterCmd, "-a%u %f", o+1, d);
 							alpha[o] = d;
 							printAlpha[o] = true;
+							if (alpha[o] >= 1)
+								topNalpha[o] = true;
 							i++;
 						}
 					}
@@ -655,6 +662,33 @@ struct ARGS
 			{
 				sprintf(clusterCmd, "%s -sort", clusterCmd);
 				sort = true;
+				continue;
+			}
+
+			// read bufRatio
+			if (!strcmp(argv[i], "-r"))
+			{
+				if ((i + 1) == argc)
+				{
+					printf("\n Please enter the buffer ratio");
+					PrintHelp(argv[0]);
+				}
+
+				if (argv[i + 1][0] != '-')
+				{
+					bufRatio = atof(argv[i + 1]);
+					if (bufRatio < 2)
+					{
+						printf("\n Please enter a valid ratio for buffer greater than 2 but not [%s]", argv[i + 1]);
+						PrintHelp(argv[0]);
+					}
+				}
+				else
+				{
+					printf("\n Please enter the buffer ratio");
+					PrintHelp(argv[0]);
+				}
+				i++;
 				continue;
 			}
 #ifdef V2
@@ -1440,6 +1474,107 @@ public:
 	}
 };
 
+struct COMBIN
+{
+	varIdx idx[MAX_ORDER]; // SNP indexes
+	double power;	// alpha or beta test value
+	void Print(FILE *f, char **n, uint32 o)
+	{
+		fprintf(f, "%f", power);
+		for(uint32 i=0; i<o; i++)
+			fprintf(f, ",%s", n[idx[i]]);
+		fprintf(f, "\n");
+	}
+};
+
+int CompCombin(const void *a, const void *b)
+{
+	COMBIN *x = (COMBIN *)a;
+	COMBIN *y = (COMBIN *)b;
+	// Descending order for alpha and Beta
+	if (y->power > x->power)
+		return 1;
+	else
+		return -1;
+}
+
+class STORAGE
+{
+public:
+	uint32 numTop;
+	double bufRatio;
+
+	COMBIN *keep;
+	uint32 numKeep; // number of combination to keep
+
+	COMBIN *buf;
+	uint32 numBuf; // buffer size to reduce insetion in sorted array.
+	uint32 bufIdx; // number of item in the buffer;
+
+	uint32 numAll; // numKeep + numBuf
+	double minKeep;	// minumum power in numKeep element
+
+	bool mergedOnce;
+	
+	STORAGE(uint32 t, double br)
+	{
+		numTop = t;
+		if (numTop < MIN_TOP)
+			numKeep = MIN_TOP;
+		else
+			numKeep = numTop;
+			
+		bufRatio = br;
+		numBuf = (uint32)(numKeep*bufRatio);
+		numAll = numKeep + numBuf;
+
+		minKeep = 0;
+		bufIdx = 0;
+		
+		keep = new COMBIN[numKeep+numBuf];
+		NULL_CHECK(keep);
+		memset(keep, 0, sizeof(COMBIN) * numAll);
+		
+		buf = &keep[numKeep];
+
+		mergedOnce = false;
+	}
+
+	~STORAGE()
+	{
+		delete[] keep;
+	}
+
+	void Merge()
+	{
+		qsort(keep, numAll, sizeof(COMBIN), CompCombin); // to be optimised only the top numKeep are needed
+		minKeep = keep[numKeep - 1].power;
+		bufIdx = 0;
+		mergedOnce = true;
+	}
+
+	void Add(COMBIN &c)
+	{
+		if (c.power > minKeep)
+		{
+			buf[bufIdx] = c;
+			bufIdx++;
+			if (bufIdx == numBuf)
+				Merge();
+		}
+	}
+
+	void Print(FILE *f, char **n, uint32 o)
+	{
+		uint32 numPrint = (mergedOnce) ? numTop : bufIdx;
+		if (numPrint > numTop)
+			numPrint = numTop;
+		Merge();
+		for (uint32 i = 0; i < numPrint; i++)
+			keep[i].Print(f, n, o);
+	}
+};
+
 struct ThreadData
 {
 	void *epiStat; // epi class
@@ -1458,15 +1593,18 @@ public:
 
 	void *(*threadFunction[4]) (void *);
 
-	// These 4 items must be allocated by each thread separately
+	FILE **topBetaFile;
+	FILE **topAlphaFile;
+
+	// below items must be allocated by each thread separately
 	word *epiCaseWord[3];
 	word *epiCtrlWord[3];
 
 	sampleIdx *contingencyCase;
 	sampleIdx *contingencyCtrl;
 
-	FILE **topBetaFile;
-	FILE **topAlphaFile;
+	STORAGE *topAlpha;
+	STORAGE *topBeta;
 
 	void OpenFiles(uint32 order)
 	{
@@ -1542,7 +1680,7 @@ public:
 		threadFunction[3] = tf4;
 	}
 
-	void AllocateThreadMemory()
+	void AllocateThreadMemory(uint32 o)
 	{
 		for (uint32 i = 0; i < MAX_ORDER - 1; i++)
 		{
@@ -1558,9 +1696,20 @@ public:
 
 		NULL_CHECK(contingencyCase);
 		NULL_CHECK(contingencyCtrl);
+
+		if (args.topNalpha[o])
+		{
+			topAlpha = new STORAGE((uint32)args.alpha[o], args.bufRatio);
+			NULL_CHECK(topAlpha);
+		}
+		if (args.topNbeta[o])
+		{
+			topBeta = new STORAGE((uint32)args.beta[o], args.bufRatio);
+			NULL_CHECK(topBeta);
+		}
 	}
 
-	void FreeThreadMemory()
+	void FreeThreadMemory(uint32 o)
 	{
 		for (uint32 i = 0; i < MAX_ORDER - 1; i++)
 		{
@@ -1570,6 +1719,15 @@ public:
 
 		delete[] contingencyCase;
 		delete[] contingencyCtrl;
+
+		if (args.topNalpha[o])
+		{
+			delete topAlpha;
+		}
+		if (args.topNbeta[o])
+		{
+			delete topBeta;
+		}
 	}
 
 	void OR_1(varIdx idx)
@@ -1857,9 +2015,11 @@ public:
 		threadIdx = td->threadId;
 		jobIdx = td->jobId;
 
-		AllocateThreadMemory();
+		AllocateThreadMemory(OIDX);
 
-		varIdx idx[1];
+		COMBIN c;
+		varIdx *idx = c.idx;
+
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
@@ -1877,13 +2037,18 @@ public:
 #endif
 			// compute beta
 			double b = Gini_1();
+			c.power = b;
 #ifdef PTEST
 			clock_t xc4 = clock();
 #endif
 			// report SNP combination if beta meet threshold
 			if (args.printBeta[OIDX])
-				if (b >= args.beta[OIDX])
-					fprintf(topBetaFile[threadIdx], "%f,%s\n", b, dataset->nameVariable[idx[0]]);
+				if (args.topNbeta[OIDX])
+				{
+					topBeta->Add(c);
+				}
+				else if (c.power >= args.beta[OIDX])
+					c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 			// Save Beta to compute Alpha of next order
 			if (args.saveBeta[OIDX])
@@ -1895,11 +2060,16 @@ public:
 				double max_p = dataset->setBeta;
 
 				double a = b - max_p;
+				c.power = a;
 
 				// report SNP combination if Alpha meet threshold
 				if (args.printAlpha[OIDX])
-					if (a >= args.alpha[OIDX])
-						fprintf(topAlphaFile[threadIdx], "%f,%s\n", a, dataset->nameVariable[idx[0]]);
+					if (args.topNalpha[OIDX])
+					{
+						topAlpha->Add(c);
+					}
+					else if (c.power >= args.alpha[OIDX])
+						c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 				// compute the best
 				if (args.best)
@@ -1914,7 +2084,15 @@ public:
 #endif
 		}
 		args.jobs[jobIdx].counted = cnt;
-		FreeThreadMemory();
+		if (args.topNalpha[OIDX])
+		{
+			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		if (args.topNbeta[OIDX])
+		{
+			topBeta->Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		FreeThreadMemory(OIDX);
 	}
 
 	void Epi_2(ThreadData *td)
@@ -1923,9 +2101,11 @@ public:
 		threadIdx = td->threadId;
 		jobIdx = td->jobId;
 
-		AllocateThreadMemory();
+		AllocateThreadMemory(OIDX);
 
-		varIdx idx[2];
+		COMBIN c;
+		varIdx *idx = c.idx;
+
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
@@ -1946,13 +2126,18 @@ public:
 #endif
 				// compute beta
 				double b = Gini_2();
+				c.power = b;
 #ifdef PTEST
 				clock_t xc4 = clock();
 #endif
 				// report SNP combination if beta meet threshold
 				if (args.printBeta[OIDX])
-					if (b >= args.beta[OIDX])
-						fprintf(topBetaFile[threadIdx], "%f,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+					if (args.topNbeta[OIDX])
+					{
+						topBeta->Add(c);
+					}
+					else if (c.power >= args.beta[OIDX])
+						c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 				// Save Beta to compute Alpha of next order
 				if (args.saveBeta[OIDX])
@@ -1964,11 +2149,16 @@ public:
 					double max_p = (SnpBeta[idx[1]] > SnpBeta[idx[0]]) ? SnpBeta[idx[1]] : SnpBeta[idx[0]];
 
 					double a = b - max_p;
+					c.power = a;
 
 					// report SNP combination if Alpha meet threshold
 					if (args.printAlpha[OIDX])
-						if (a >= args.alpha[OIDX])
-							fprintf(topAlphaFile[threadIdx], "%f,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]]);
+						if (args.topNalpha[OIDX])
+						{
+							topAlpha->Add(c);
+						}
+						else if (c.power >= args.alpha[OIDX])
+							c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 					// compute the best
 					if (args.best)
@@ -1984,7 +2174,15 @@ public:
 			}
 		}
 		args.jobs[jobIdx].counted = cnt;
-		FreeThreadMemory();
+		if (args.topNalpha[OIDX])
+		{
+			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		if (args.topNbeta[OIDX])
+		{
+			topBeta->Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		FreeThreadMemory(OIDX);
 	}
 
 	void Epi_3(ThreadData *td)
@@ -1993,9 +2191,11 @@ public:
 		threadIdx = td->threadId;
 		jobIdx = td->jobId;
 
-		AllocateThreadMemory();
+		AllocateThreadMemory(OIDX);
 
-		varIdx idx[3];
+		COMBIN c;
+		varIdx *idx = c.idx;
+
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
@@ -2029,13 +2229,18 @@ public:
 #endif
 					// compute beta
 					double b = Gini_3();
+					c.power = b;
 #ifdef PTEST
 					clock_t xc4 = clock();
 #endif
 					// report SNP combination if beta meet threshold
 					if (args.printBeta[OIDX])
-						if (b >= args.beta[OIDX])
-							fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
+						if (args.topNbeta[OIDX])
+						{
+							topBeta->Add(c);
+						}
+						else if (c.power >= args.beta[OIDX])
+							c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 					// Save Beta to compute Alpha of next order
 					if (args.saveBeta[OIDX])
@@ -2048,11 +2253,16 @@ public:
 						max_p = (PairBeta[idx[1]][idx[2]] > max_p) ? PairBeta[idx[1]][idx[2]] : max_p;
 
 						double a = b - max_p;
+						c.power = a;
 
 						// report SNP combination if Alpha meet threshold
 						if (args.printAlpha[OIDX])
-							if (a >= args.alpha[OIDX])
-								fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]]);
+							if (args.topNalpha[OIDX])
+							{
+								topAlpha->Add(c);
+							}
+							else if (c.power >= args.alpha[OIDX])
+								c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 						// compute the best
 						if (args.best)
@@ -2069,7 +2279,15 @@ public:
 			}
 		}
 		args.jobs[jobIdx].counted = cnt;
-		FreeThreadMemory();
+		if (args.topNalpha[OIDX])
+		{
+			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		if (args.topNbeta[OIDX])
+		{
+			topBeta->Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		FreeThreadMemory(OIDX);
 	}
 
 	void Epi_4(ThreadData *td)
@@ -2078,9 +2296,11 @@ public:
 		threadIdx = td->threadId;
 		jobIdx = td->jobId;
 
-		AllocateThreadMemory();
+		AllocateThreadMemory(OIDX);
 
-		varIdx idx[4];
+		COMBIN c;
+		varIdx *idx = c.idx;
+
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{	
@@ -2117,14 +2337,19 @@ public:
 #endif
 						// compute beta
 						double b = Gini_4();
+						c.power = b;
 #ifdef PTEST
 						clock_t xc4 = clock();
 #endif
 
 						// report SNP combination if beta meet threshold
 						if (args.printBeta[OIDX])
-							if (b >= args.beta[OIDX])
-								fprintf(topBetaFile[threadIdx], "%f,%s,%s,%s,%s\n", b, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
+							if (args.topNbeta[OIDX])
+							{
+								topBeta->Add(c);
+							}
+							else if (c.power >= args.beta[OIDX])
+								c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX+1);
 
 						// compute Information Gained
 						if (args.computeAlpha[OIDX])
@@ -2134,11 +2359,16 @@ public:
 							max_p = (tripletBeta[idx[1]][idx[2]][idx[3]] > max_p) ? tripletBeta[idx[1]][idx[2]][idx[3]] : max_p;
 
 							double a = b - max_p;
+							c.power = a;
 
 							// report SNP combination if Alpha meet threshold
 							if (args.printAlpha[OIDX])
-								if (a >= args.alpha[OIDX])
-									fprintf(topAlphaFile[threadIdx], "%f,%s,%s,%s,%s\n", a, dataset->nameVariable[idx[0]], dataset->nameVariable[idx[1]], dataset->nameVariable[idx[2]], dataset->nameVariable[idx[3]]);
+								if (args.topNalpha[OIDX])
+								{
+									topAlpha->Add(c);
+								}
+								else if (c.power >= args.alpha[OIDX])
+									c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 							// compute the best
 							if (args.best)
@@ -2157,7 +2387,15 @@ public:
 			}
 		}
 		args.jobs[jobIdx].counted = cnt;
-		FreeThreadMemory();
+		if (args.topNalpha[OIDX])
+		{
+			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX+1);
+		}
+		if (args.topNbeta[OIDX])
+		{
+			topBeta->Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
+		}
+		FreeThreadMemory(OIDX);
 	}
 
 	void MultiThread(uint32 o)
@@ -2181,7 +2419,7 @@ public:
 				if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
 				{
 					printf("\n >>> counted: %llu expected %15.0f", args.jobs[td[i].jobId].counted, args.jobs[td[i].jobId].comb);
-					//ERROR("Problem in parallelisation please report on GitHub issue page");
+					ERROR("Problem in parallelisation please report on GitHub issue page");
 				}
 		}
 
@@ -2255,9 +2493,9 @@ public:
 					printf("\n Merge Beta%u files...", order + 1);
 					// create a merged output file
 					if (args.clusterMode)
-						sprintf(cmd, "cat %s.Beta.%s.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Beta.%s.csv", args.output, postfix, sortCmd, header, args.output, postfix);
+						sprintf(cmd, "cat %s.Beta.%s.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%s.csv", args.output, postfix, sortCmd, header, args.output, postfix);
 					else
-						sprintf(cmd, "cat %s.Beta.%u.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Beta.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
+						sprintf(cmd, "cat %s.Beta.%u.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
 					
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
