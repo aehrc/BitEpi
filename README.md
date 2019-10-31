@@ -71,6 +71,7 @@ It may take time for changes on this repository to be reflected on the other bel
 https://github.com/bhosking/bitepi-python
 
 **Command-Line Interface (CLI) Arguments**
+
 | Argument       | Description                               |
 |----------------|-------------------------------------------|
 | -i [str]       | Path to input CSV file                    |
