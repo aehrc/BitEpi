@@ -23,15 +23,16 @@ BitEpi implements efficient **multi-threading** (parallelization) such that each
 
 **Alpha** analysis measure the interactions effect size between SNPs. In other words, Alpha is the gain in the association power due to interaction between SNPs. Alpha computed as below where B_ indicates Beta value. 
 
-(4-SNP) Alpha WXYZ = B_WXYZ - Max(B_WXY, B_WXZ, B_WYZ, B_XYZ)
-(3-SNP) Alpha XYZ = B_XYZ - Max(B_XY, B_XZ, B_YZ)
-(2-SNP) Alpha XY = B_XY - Max(B_X, B_Y)
-(1-SNP) Alpha X = B_X - B_0
+- (4-SNP) Alpha WXYZ = B_WXYZ - Max(B_WXY, B_WXZ, B_WYZ, B_XYZ)
+- (3-SNP) Alpha XYZ = B_XYZ - Max(B_XY, B_XZ, B_YZ)
+- (2-SNP) Alpha XY = B_XY - Max(B_X, B_Y)
+- (1-SNP) Alpha X = B_X - B_0
 
 B_0 is the purity (Gini-Index) of the samples in the dataset (CONSTANT). Given r case and q controls, B_0 is computed as (r^2 + q^2) / (r+q)^2. 1-SNP Alpha is similar to 1-SNP Beta with an offset (B_0). While the minimum value for Beta depends on the dataset characteristics (B_0), the minimum value for Alpha is always 0.
 
 **High value for Beta does not necessarily indicate strong interactions**.
 For example, let's say
+
 - Beta A  = 0.90 (association power of SNP A)
 - Beta B  = 0.03 (association power of SNP B)
 - Beta AB = 0.92 (association power of pair of A and B)
@@ -46,8 +47,8 @@ In this example, Beta XY is not as high as Beta AB. However, it is not driven by
 
 The Alpha analysis reveals this:
 
-Alpha AB = Beta AB - Max( Beta A, Beta B) = 0.92 - Max(0.90, 0.03) = **0.02** (Low Alpha -> no interaction)
-Alpha XY = Beta XY - Max( Beta X, Beta Y) = 0.75 - Max(0.51, 0.53) = **0.22** (High Alpha -> strong interaction)
+- Alpha AB = Beta AB - Max( Beta A, Beta B) = 0.92 - Max(0.90, 0.03) = **0.02** (Low Alpha -> no interaction)
+- Alpha XY = Beta XY - Max( Beta X, Beta Y) = 0.75 - Max(0.51, 0.53) = **0.22** (High Alpha -> strong interaction)
 
 **best Mode**
 If you run BitEpi in the best mode, BitEpi finds the best 2-SNP, 3-SNP and 4-SNP interactions for each SNP (maximize Alpha) and then report Beta and Alpha for each SNPs and its best 2-SNP, 3-SNP and 4-SNP interactions. 
