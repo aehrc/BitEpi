@@ -26,7 +26,7 @@
  There are     4000 samples  in sampleData/data.csv
  There are     2000 Cases    in sampleData/data.csv
  There are     2000 Controls in sampleData/data.csv
- Purity of the whole dataset is 0.500000 (baseline for Beta)
+ Purity of the whole dataset (B_0) is 0.500000 (baseline for Beta)
  Shift dataset by 2 bits compeleted
  Shift dataset by 4 bits compeleted
  >>>>>> 1-SNP exhaustive search
@@ -135,7 +135,7 @@ Job:     1 process              50 SNPs (         1 ...         50)
  There are     4000 samples  in sampleData/data.csv
  There are     2000 Cases    in sampleData/data.csv
  There are     2000 Controls in sampleData/data.csv
- Purity of the whole dataset is 0.500000 (baseline for Beta)
+ Purity of the whole dataset (B_0) is 0.500000 (baseline for Beta)
  Shift dataset by 2 bits compeleted
  Shift dataset by 4 bits compeleted
  Shift dataset by 6 bits compeleted
@@ -160,9 +160,9 @@ Job:     1 process              50 SNPs (         1 ...         50)
 
  Thread     2 processing Job     2 ...
 
- Thread     2 processed Job     2 in          1 seconds (      9805 tests per second)
-
  Thread     1 processed Job     1 in          1 seconds (      9795 tests per second)
+
+ Thread     2 processed Job     2 in          1 seconds (      9805 tests per second)
 
  All jobs are compeleted in          1 seconds (     19600 tests per second)
 
@@ -230,7 +230,7 @@ Job:     1 process              50 SNPs (         1 ...         50)
  There are     4000 samples  in sampleData/data.csv
  There are     2000 Cases    in sampleData/data.csv
  There are     2000 Controls in sampleData/data.csv
- Purity of the whole dataset is 0.500000 (baseline for Beta)
+ Purity of the whole dataset (B_0) is 0.500000 (baseline for Beta)
  Shift dataset by 2 bits compeleted
  Shift dataset by 4 bits compeleted
  Shift dataset by 6 bits compeleted
@@ -322,13 +322,13 @@ Job:     1 process              50 SNPs (         1 ...         50)
 
 + set +x
 >>>>>>> Output files
--rw-rw-r-- 1 arash arash   38 Oct 31 01:18 sampleData/out.Alpha.1.csv
--rw-rw-r-- 1 arash arash  617 Oct 31 01:18 sampleData/out.Alpha.2.csv
--rw-rw-r-- 1 arash arash 6543 Oct 31 01:18 sampleData/out.Alpha.3.csv
--rw-rw-r-- 1 arash arash 1597 Oct 31 01:18 sampleData/out.Alpha.4.csv
--rw-rw-r-- 1 arash arash 5210 Oct 31 01:18 sampleData/out.best.csv
--rw-rw-r-- 1 arash arash  139 Oct 31 01:18 sampleData/out.Beta.1.csv
--rw-rw-r-- 1 arash arash  885 Oct 31 01:18 sampleData/out.Beta.2.csv
--rw-rw-r-- 1 arash arash 9058 Oct 31 01:18 sampleData/out.Beta.3.csv
--rw-rw-r-- 1 arash arash 2205 Oct 31 01:18 sampleData/out.Beta.4.csv
+-rw-rw-r-- 1 arash arash   38 Oct 31 12:47 sampleData/out.Alpha.1.csv
+-rw-rw-r-- 1 arash arash  617 Oct 31 12:47 sampleData/out.Alpha.2.csv
+-rw-rw-r-- 1 arash arash 6543 Oct 31 12:47 sampleData/out.Alpha.3.csv
+-rw-rw-r-- 1 arash arash 1597 Oct 31 12:47 sampleData/out.Alpha.4.csv
+-rw-rw-r-- 1 arash arash 5210 Oct 31 12:47 sampleData/out.best.csv
+-rw-rw-r-- 1 arash arash  139 Oct 31 12:47 sampleData/out.Beta.1.csv
+-rw-rw-r-- 1 arash arash  885 Oct 31 12:47 sampleData/out.Beta.2.csv
+-rw-rw-r-- 1 arash arash 9058 Oct 31 12:47 sampleData/out.Beta.3.csv
+-rw-rw-r-- 1 arash arash 2205 Oct 31 12:47 sampleData/out.Beta.4.csv
 <<<<<<<<<<<<<<<<<<<<

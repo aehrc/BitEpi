@@ -1424,7 +1424,7 @@ public:
 		for (sampleIdx i = 0; i < numSample; i++)
 			if (labels[i]) numCase++; else numCtrl++;
 		setBeta = P2((double)numCase / numSample) + P2((double)numCtrl / numSample);
-		printf("\n Purity of the whole dataset is %f (baseline for Beta)", setBeta);
+		printf("\n Purity of the whole dataset (B_0) is %f (baseline for Beta)", setBeta);
 	}
 
 	void Shift()
