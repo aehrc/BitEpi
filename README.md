@@ -12,12 +12,12 @@ BitEpi implements efficient **multi-threading** (parallelization) such that each
 
 **Beta** analysis measures the association power of a SNP (1-SNP), a pair of SNPs (2-SNP), a combination of three SNPs (3-SNP) and a combination of four SNPs (4-SNP). Beta represents the combined association power.  Beta is computed as the weighted average purity (Gini-Index) of each row of the contingency table where the weight is the fraction of samples in that row. The below example shows how we compute Beta for an individual SNPs (1-SNP Beta).
 
-| Genotype | # Cases | # Controls |              Purity             |    Weight   | Purity * Weight |
-|:--------:|:-------:|:----------:|:-------------------------------:|:-----------:|:---------------:|
-|    0/0   |    5    |     10     | ((5*5)+(10*10))/(15*15) = 0.555 | 15/30 = 0.5 |      0.228      |
-|    0/1   |    2    |      4     | ((2*2)+(4*4))/(6*6)     = 0.555 | 6/30  = 0.2 |      0.111      |
-|    1/1   |    8    |      1     | ((8*8)+(1*1))/(9*9)     = 0.802 | 9/30  = 0.3 |      0.241      |
-|          |         |            |                                 | Beta (sum): |    **0.580**    |
+| Genotype | # Cases | # Controls |                Purity              |    Weight   | Purity * Weight |
+|:--------:|:-------:|:----------:|:----------------------------------:|:-----------:|:---------------:|
+|    0/0   |    5    |     10     | ((5\*5)+(10\*10))/(15\*15) = 0.555 | 15/30 = 0.5 |      0.228      |
+|    0/1   |    2    |      4     | ((2\*2)+(4\*4))/(6\*6)     = 0.555 | 6/30  = 0.2 |      0.111      |
+|    1/1   |    8    |      1     | ((8\*8)+(1\*1))/(9\*9)     = 0.802 | 9/30  = 0.3 |      0.241      |
+|          |         |            |                                    | Beta (sum): |    **0.580**    |
 
 2-SNP, 3-SNP, and 4-SNP Beta are computed in the same way. the only difference is that there are more rows in the contingency table (9, 27 and 81 rows respectively).
 
