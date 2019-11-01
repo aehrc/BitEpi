@@ -71,9 +71,7 @@ BOOST (pairwise search only)  and MPI3SNP (3-SNP search only) also use bitwise o
 
 **Python Interface**
 
-BitEpi Python Interface is implemented in a separate GitHub page. You can find examples and descriptions there.
-It may take time for changes on this repository to be reflected on the other below repository. 
-https://github.com/bhosking/bitepi-python
+BitEpi Python Interface is implemented in a separate GitHub page ([bitepi-python](https://github.com/bhosking/bitepi-python)). You can find examples and descriptions there. It may take time for changes on this repository to be reflected on the bitepi-python repository.
 
 **Command-Line Interface (CLI) Arguments**
 
@@ -133,7 +131,7 @@ $ bash runme.sh
 ```
 
 # Convert GAMETES output
-GAMETES is an epistasis simulater used in several publication to measure accuracy of different methods. [GAMETES_2_EPI.sh] converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: *sampleData/GAMETES_Example_Output.txt*
+[GAMETES](http://sourceforge.net/projects/gametes/files/) is an epistasis simulater ([Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108)) used in several publication to measure accuracy of different methods. [GAMETES_2_EPI.sh] converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: *sampleData/GAMETES_Example_Output.txt*
 
 See below example
 ```sh
@@ -141,9 +139,25 @@ $ bash GAMETES_2_EPI.sh sampleData/GAMETES_Example_Output
 $ ls sampleData/GAMETES_Example_Output*
 ```
 
-Download GAMETES: http://sourceforge.net/projects/gametes/files/
+# Synthetic dataset used for performance and accuracy tesing in the paper.
 
-GAMETES Paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108/
+2-SNP (pairwise) and 3-SNP (triplet) 
+
+- [Models](https://variant-spark.s3-ap-southeast-2.amazonaws.com/BitEpiDataSet/Data/GAMETES_Models.tar.gz)
+- [Datasets and Models](https://variant-spark.s3-ap-southeast-2.amazonaws.com/BitEpiDataSet/Data/SimulatedData.tar.gz)
+- GAMETES format only (use the convertor above)
+
+2-SNP data simulated in [MACOED](https://www.ncbi.nlm.nih.gov/pubmed/25338719) including ME (Marginal Effect) and NME (None Marginal Effect)
+
+- [Data](https://variant-spark.s3-ap-southeast-2.amazonaws.com/BitEpiDataSet/Data/SimData_MACOED.tar.gz)
+- Models are not provided.
+- Data can be also downloaded from (its in csv not tsv) [here](www.csbio.sjtu.edu.cn/bioinf/MACOED/)
+- GAMETES format only (use the convertor above)
+
+Performance (runtime) testing datasets:
+
+- [Data](https://variant-spark.s3-ap-southeast-2.amazonaws.com/BitEpiDataSet/Data/PerformanceTesting.tar.gz)
+-  Available in GAMETES, BitEpi and transposed plink formats.
 
 # Cite BitEpi
 The paper is not published yet (will be available soon). You may cite our GitHub page for now.
