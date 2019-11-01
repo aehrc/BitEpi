@@ -142,6 +142,7 @@ $ ls sampleData/GAMETES_Example_Output*
 ```
 
 Download GAMETES: http://sourceforge.net/projects/gametes/files/
+
 GAMETES Paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108/
 
 # Cite BitEpi
