@@ -30,7 +30,8 @@ BitEpi implements efficient **multi-threading** (parallelization) such that each
 
 B_0 is the purity (Gini-Index) of the samples in the dataset (CONSTANT). Given r case and q controls, B_0 is computed as (r^2 + q^2) / (r+q)^2. 1-SNP Alpha is similar to 1-SNP Beta with an offset (B_0). While the minimum value for Beta depends on the dataset characteristics (B_0), the minimum value for Alpha is always 0.
 
-**High value for Beta does not necessarily indicate strong interactions**.
+**High value for Beta does not necessarily indicate strong interactions.**
+
 For example, let's say
 
 - Beta A  = 0.90 (association power of SNP A)
@@ -51,21 +52,25 @@ The Alpha analysis reveals this:
 - Alpha XY = Beta XY - Max( Beta X, Beta Y) = 0.75 - Max(0.51, 0.53) = **0.22** (High Alpha -> strong interaction)
 
 **best Mode**
+
 If you run BitEpi in the best mode, BitEpi finds the best 2-SNP, 3-SNP and 4-SNP interactions for each SNP (maximize Alpha) and then report Beta and Alpha for each SNPs and its best 2-SNP, 3-SNP and 4-SNP interactions. 
 
 **Notes**
+
 - To computer (N)-SNP Alpha the program needs (N-1)-SNP Beta. To avoid computational redundancy, BitEpi computes all (N-1)-SNP Beta and store them (n-1) dimension array. For 4-SNP search, the size of this array is (v^3)*8 bytes where v is the number of SNPs in the dataset (i.e for 4000 SNPs 256 GB of Memory). This is a bottleneck of the program. Using 3 dimension array to store 3-SNP combination results in memory redundancy. However, these data are accessed so frequently and the array leads to the fastest access. 
 - You can combine different analyses, for example, you can do 3-SNP Beta and 2-SNP alpha in the same run.
 - You can choose to report all SNP combinations that exceed specific Alpha and Beta threshold. However, there are no guidelines on how to choose such a threshold. It would be easier if you ask for the top N SNP combinations (with the highest Alpha or Beta) to be reported. This option is implemented in BitEpi with minor computational cost (see command line parameter Notes)
 - If you parallelize the program on so many threads such that each thread process a very small number of combinations to test (less than MIN_COMB_IN_JOB in the code). The program exit without performing the job. In this case, you should use a smaller number of threads.
 
 **BitEpi is Fast**
+
 BitEpi uses fast bitwise operations to count samples with a different genotype. That is why we call it BitEpi.
 BOOST (pairwise search only)  and MPI3SNP (3-SNP search only) also use bitwise operations for this purpose. However, the bitwise method used in BitEpi is different and better suits 3-SNP and 4-SNP (higher-order) analysis. As a consequence, BitEpi is slower than BOOST for 2-SNP search but faster than anything else for 3-SNP and 4-SNP search (to the best of our knowledge). 
 
 # BitEpi has two interfaces: Command-Line and Python
 
 **Python Interface**
+
 BitEpi Python Interface is implemented in a separate GitHub page. You can find examples and descriptions there.
 It may take time for changes on this repository to be reflected on the other below repository. 
 https://github.com/bhosking/bitepi-python
@@ -89,6 +94,7 @@ https://github.com/bhosking/bitepi-python
 | -a4 [thr]      | Perform 4-SNP Alpha analysis              |
 
 **notes**
+
 - If thr<1 then thr is the minimum threshold on alpha and beta to be reported in the output.
 - If thr>=1 then thr is the number of top hits in alpha and beta to be reported in the output.
 - If thr>=1 and more than 1 thread are used, then each thread reports thr top hits and the output files are merged. So (t*thr) top hits will be reported. You can use -sort option and only consider the top thr record.
@@ -96,12 +102,14 @@ https://github.com/bhosking/bitepi-python
 - If all interactions should be reported set thr to 0.
 
 **Input Format**
+
 - The first row includes labels: 1 and 0 for cases and controls respectively
 - The first column includes SNP unique ids. BitEpi does not check the uniqueness.
 - The first entry (first col and first row) is ignored.
 - All other entry represents genotype and can be 0, 1 or 2 for 0/0, 0/1 and 1/1 genotype (phased genotype are not supported). 
 
 **Output File Naming**
+
 - output_prefix.best.csv
 - output_prefix.Alpha.Order.csv
 - output_prefix.Beta.Order.csv
@@ -109,18 +117,32 @@ https://github.com/bhosking/bitepi-python
 - output_prefix.Beta.Order.FirstJobIndex.LastJobIndex.csv
 
 # To Compile:
+
 Use the g++ commands in compile.sh or just run it
 ```sh
 $ cd BitEpi
 $ bash compile.sh
 ```
 
-#To Run Test:
-See two examples in runme.sh or just run it
+# To Run Test:
+
+See examples in runme.sh or just run it
 ```sh
 $ cd BitEpi
 $ bash runme.sh
 ```
+
+# Convert GAMETES output
+GAMETES is an epistasis simulater used in several publication to measure accuracy of different methods. [GAMETES_2_EPI.sh] converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: *sampleData/GAMETES_Example_Output.txt*
+
+See below example
+```sh
+$ bash GAMETES_2_EPI.sh sampleData/GAMETES_Example_Output
+$ ls sampleData/GAMETES_Example_Output*
+```
+
+Download GAMETES: http://sourceforge.net/projects/gametes/files/
+GAMETES Paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108/
 
 # Cite BitEpi
 The paper is not published yet (will be available soon). You may cite our GitHub page for now.
