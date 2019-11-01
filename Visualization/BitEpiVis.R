@@ -23,54 +23,54 @@ AddInteractionNode = function(data)
   return(data)
 }
 
-# list all the nodes (1-SNP, 2-SNP, 3-SNP, 4SNP) assing alpha to the size and rank them by order
+# list all the nodes (1-SNP, 2-SNP, 3-SNP, 4SNP) assing beta to the size and rank them by order
 NodeGen = function(dataX)
 {
   #1-SNP
   data       = dataX
   data$Node  = data$SNP
   data$order = 1
-  data$alpha = data$SNP_A
+  data$beta = data$SNP_A
   data$color = Color$SNP
-  data       = data[order(-data$alpha),]
+  data       = data[order(-data$beta),]
   data$rank  = seq.int(nrow(data))
-  nodes      = select(data, Node, rank, alpha, color, order)
+  nodes      = select(data, Node, rank, beta, color, order)
 
   #2-SNP
   data       = dataX
   data$Node  = data$nP
   data$order = 2
-  data$alpha  = data$PAIR_A
+  data$beta  = data$PAIR_A
   data$color = Color$PAIR
-  data       = data[order(data[,'Node'],-data[,'alpha']),]
+  data       = data[order(data[,'Node'],-data[,'beta']),]
   data       = data[!duplicated(data$Node),]
-  data       = data[order(-data$alpha),]
+  data       = data[order(-data$beta),]
   data$rank  = seq.int(nrow(data))
-  nodes      = rbind(nodes, select(data, Node, rank, alpha, color, order))
+  nodes      = rbind(nodes, select(data, Node, rank, beta, color, order))
   
   #3-SNP
   data       = dataX
   data$Node  = data$nT
   data$order = 3
-  data$alpha  = data$TRIPLET_A
+  data$beta  = data$TRIPLET_A
   data$color = Color$TRIPLET
-  data       = data[order(data[,'Node'],-data[,'alpha']),]
+  data       = data[order(data[,'Node'],-data[,'beta']),]
   data       = data[!duplicated(data$Node),]
-  data       = data[order(-data$alpha),]
+  data       = data[order(-data$beta),]
   data$rank  = seq.int(nrow(data))
-  nodes      = rbind(nodes, select(data, Node, rank, alpha, color, order))
+  nodes      = rbind(nodes, select(data, Node, rank, beta, color, order))
   
   #4-SNP
   data       = dataX
   data$Node  = data$nQ
   data$order = 4
-  data$alpha  = data$QUADLET_A
+  data$beta  = data$QUADLET_A
   data$color = Color$QUADLET
-  data       = data[order(data[,'Node'],-data[,'alpha']),]
+  data       = data[order(data[,'Node'],-data[,'beta']),]
   data       = data[!duplicated(data$Node),]
-  data       = data[order(-data$alpha),]
+  data       = data[order(-data$beta),]
   data$rank  = seq.int(nrow(data))
-  nodes      = rbind(nodes, select(data, Node, rank, alpha, color, order))
+  nodes      = rbind(nodes, select(data, Node, rank, beta, color, order))
 
   return(nodes)
 }
@@ -144,15 +144,16 @@ QueryGraph = function(Graph, thr, minNodeSize, maxNodeSize)
   
   #and merge them to dataset
   selNodes = unique(rbind(selNodes, tarNodes))
+
+  minBeta = min(selNodes$beta)
+  maxBeta = max(selNodes$beta)
+  rangeBeta = maxBeta - minBeta
+  rangeSize = maxNodeSize - minNodeSize
+  ratio = rangeSize/rangeBeta
+  selNodes$size = ((selNodes$beta - minBeta) * ratio) + minNodeSize;
   
   selNodes[(selNodes$order==1) & (selNodes$rank>thr$SNP),]$color = Color$OTHER
-
-  minAlpha = min(selNodes$alpha)
-  maxAlpha = max(selNodes$alpha)
-  rangeAlpha = maxAlpha - minAlpha
-  rangeSize = maxNodeSize - minNodeSize
-  ratio = rangeSize/rangeAlpha
-  selNodes$size = ((selNodes$alpha - minAlpha) * ratio) + minNodeSize;
+  selNodes[(selNodes$order==1) & (selNodes$rank>thr$SNP),]$size = minNodeSize
   
   return(list(Nodes=selNodes, Edges=intEdges))
 }
