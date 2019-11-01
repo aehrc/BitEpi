@@ -320,15 +320,46 @@ Job:     1 process              50 SNPs (         1 ...         50)
 =============Finish=============
 
 
++ bash GAMETES_2_EPI.sh sampleData/GAMETES_Example_Output
+sampleData/GAMETES_Example_Output.txt exists
+datamash is installed
+plink is installed
+>>>>> There are 100 SNPs and 2000 samples in the file
+PLINK v1.90b6.10 64-bit (17 Jun 2019)          www.cog-genomics.org/plink/1.9/
+(C) 2005-2019 Shaun Purcell, Christopher Chang   GNU General Public License v3
+Logging to sampleData/GAMETES_Example_Output.log.
+Options in effect:
+  --out sampleData/GAMETES_Example_Output
+  --pheno sampleData/GAMETES_Example_Output.pheno
+  --recode transpose
+  --vcf sampleData/GAMETES_Example_Output.vcf
+
+8191 MB RAM detected; reserving 4095 MB for main workspace.
+--vcf: sampleData/GAMETES_Example_Output-temporary.bed +
+sampleData/GAMETES_Example_Output-temporary.bim +
+sampleData/GAMETES_Example_Output-temporary.fam written.
+100 variants loaded from .bim file.
+2000 people (0 males, 0 females, 2000 ambiguous) loaded from .fam.
+Ambiguous sex IDs written to sampleData/GAMETES_Example_Output.nosex .
+2000 phenotype values present after --pheno.
+Warning: Ignoring phenotypes of missing-sex samples.  If you don't want those
+phenotypes to be ignored, use the --allow-no-sex flag.
+Using 1 thread (no multithreaded calculations invoked).
+Before main variant filters, 2000 founders and 0 nonfounders present.
+Calculating allele frequencies... 0%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38%39%40%41%42%43%44%45%46%47%48%49%50%51%52%53%54%55%56%57%58%59%60%61%62%63%64%65%66%67%68%69%70%71%72%73%74%75%76%77%78%79%80%81%82%83%84%85%86%87%88%89%90%91%92%93%94%95%96%97%98%99% done.
+100 variants and 2000 people pass filters and QC.
+Among remaining phenotypes, 1000 are cases and 1000 are controls.
+--recode transpose to sampleData/GAMETES_Example_Output.tped +
+sampleData/GAMETES_Example_Output.tfam ... 0%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38%39%40%41%42%43%44%45%46%47%48%49%50%51%52%53%54%55%56%57%58%59%60%61%62%63%64%65%66%67%68%69%70%71%72%73%74%75%76%77%78%79%80%81%82%83%84%85%86%87%88%89%90%91%92%93%94%95%96%97%98%99%done.
 + set +x
 >>>>>>> Output files
--rw-rw-r-- 1 arash arash   38 Oct 31 12:47 sampleData/out.Alpha.1.csv
--rw-rw-r-- 1 arash arash  617 Oct 31 12:47 sampleData/out.Alpha.2.csv
--rw-rw-r-- 1 arash arash 6543 Oct 31 12:47 sampleData/out.Alpha.3.csv
--rw-rw-r-- 1 arash arash 1597 Oct 31 12:47 sampleData/out.Alpha.4.csv
--rw-rw-r-- 1 arash arash 5210 Oct 31 12:47 sampleData/out.best.csv
--rw-rw-r-- 1 arash arash  139 Oct 31 12:47 sampleData/out.Beta.1.csv
--rw-rw-r-- 1 arash arash  885 Oct 31 12:47 sampleData/out.Beta.2.csv
--rw-rw-r-- 1 arash arash 9058 Oct 31 12:47 sampleData/out.Beta.3.csv
--rw-rw-r-- 1 arash arash 2205 Oct 31 12:47 sampleData/out.Beta.4.csv
+-rw-rw-r-- 1 arash arash   38 Nov  1 11:50 sampleData/out.Alpha.1.csv
+-rw-rw-r-- 1 arash arash  617 Nov  1 11:50 sampleData/out.Alpha.2.csv
+-rw-rw-r-- 1 arash arash 6543 Nov  1 11:50 sampleData/out.Alpha.3.csv
+-rw-rw-r-- 1 arash arash 1597 Nov  1 11:50 sampleData/out.Alpha.4.csv
+-rw-rw-r-- 1 arash arash 5210 Nov  1 11:50 sampleData/out.best.csv
+-rw-rw-r-- 1 arash arash  139 Nov  1 11:50 sampleData/out.Beta.1.csv
+-rw-rw-r-- 1 arash arash  885 Nov  1 11:50 sampleData/out.Beta.2.csv
+-rw-rw-r-- 1 arash arash 9058 Nov  1 11:50 sampleData/out.Beta.3.csv
+-rw-rw-r-- 1 arash arash 2205 Nov  1 11:50 sampleData/out.Beta.4.csv
 <<<<<<<<<<<<<<<<<<<<
