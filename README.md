@@ -170,7 +170,8 @@ To get a nice plot in Cytoscope you shold first import our style file [Visualiza
 In the *Style* tab of the *Control Panel*, select *BitEpi* in the style dropdown menu. In the *Style* tab click on the menu buttom (three horizontal line) and select *Make Current Style Default*
 
 **Run the R code**
-As you can see in the example screenshot, at the end of the [Visualization/BitEpiVis.R] the **thr** variable is defined. It is the number of most significant SNPs (1-SNP) and interactions (2-SNP, 3-SNP and 4-SNP) you want to include in the graph.
+As you can see in the example screenshot, at the end of the [Visualization/BitEpiVis.R] the **thr** variable is defined. It is the number of most significant SNPs (1-SNP) and interactions (2-SNP, 3-SNP and 4-SNP) you want to include in the graph (based on Alpha).
+
 The **DoItAll** function takes the path to the BitEpi best output and generate the graph. You should leave Cytoscape open when you run the R code. Once the Graph appears in Cytoscape, from *Layout* menu choose *Grid Layout* (make sure BitEpi style is selected before that). Now you can see the nice plot.
 
 You can drag and drop nodes to create your own custom layout. **When you click on a node and select it, it turns to yellow and you can see its detailes in the table below the graph**. See the example screenshot.

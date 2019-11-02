@@ -35,7 +35,7 @@ NodeGen = function(dataX)
   data       = data[order(-data$SNP_A),]
   data$rank  = seq.int(nrow(data))
   nodes      = select(data, Node, rank, beta, color, order)
-  
+
   #2-SNP
   data       = dataX
   data$Node  = data$nP
@@ -71,7 +71,7 @@ NodeGen = function(dataX)
   data       = data[order(-data$QUADLET_A),]
   data$rank  = seq.int(nrow(data))
   nodes      = rbind(nodes, select(data, Node, rank, beta, color, order))
-  
+
   return(nodes)
 }
 
@@ -183,4 +183,4 @@ minNodeSize = 10
 maxNodeSize = 35
 
 #Sort by Alpha and but represent beta as node size in the plot
-DoItAll('sampleData/out.best.csv', thr, minNodeSize, maxNodeSize)
+DoItAll('TheExampleInPaper/data.best.csv', thr, minNodeSize, maxNodeSize)
