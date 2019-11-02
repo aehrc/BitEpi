@@ -4,13 +4,13 @@ BitEpi is software for an exhaustive search of higher-order epistatic interactio
 
 It can search for 2-SNP (pairwise) interactions as well as 3-SNP and 4-SNP (**Higher-Order**) interactions. It also processes SNPs individually (1-SNP test)
 
-BitEpi performs an **exhaustive** search that means it tests all possible combinations of SNPs. For example, the 4-SNP search of 50 SNPs (sampleData/data.csv) requires to test all "4 out of 50" 4-SNP combinations (230300 4-SNP combinations).
+BitEpi performs an **exhaustive** search that means it tests all possible combinations of SNPs. For example, the 4-SNP search of 50 SNPs ([data.csv](sampleData/data.csv)) requires to test all "4 out of 50" 4-SNP combinations (230300 4-SNP combinations).
 
 BitEpi implements efficient **multi-threading** (parallelization) such that each thread tests almost the same number of combinations.
 
 **BitEpi could perform 2 different  association analysis: Beta and Alpha**
 
-**Beta** analysis measures the association power of a SNP (1-SNP), a pair of SNPs (2-SNP), a combination of three SNPs (3-SNP) and a combination of four SNPs (4-SNP). Beta represents the combined association power.  Beta is computed as the weighted average purity (Gini-Index) of each row of the contingency table where the weight is the fraction of samples in that row. The below example shows how we compute Beta for an individual SNPs (1-SNP Beta).
+**Beta** analysis measures the association power of an SNP (1-SNP), a pair of SNPs (2-SNP), a combination of three SNPs (3-SNP) and a combination of four SNPs (4-SNP). Beta represents the combined association power.  Beta is computed as the weighted average purity (Gini-Index) of each row of the contingency table where the weight is the fraction of samples in that row. The below example shows how we compute Beta for an individual SNPs (1-SNP Beta).
 
 | Genotype | # Cases | # Controls |                Purity              |    Weight   | Purity * Weight |
 |:--------:|:-------:|:----------:|:----------------------------------:|:-----------:|:---------------:|
@@ -131,7 +131,7 @@ $ bash runme.sh
 ```
 
 # Convert GAMETES output
-[GAMETES](http://sourceforge.net/projects/gametes/files/) is an epistasis simulater ([Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108)) used in several publication to measure accuracy of different methods. [GAMETES_2_EPI.sh] converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: *sampleData/GAMETES_Example_Output.txt*
+[GAMETES](http://sourceforge.net/projects/gametes/files/) is an epistasis simulator ([Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108)) used in several publications to measure the accuracy of different methods. [GAMETES_2_EPI.sh](GAMETES_2_EPI.sh) converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: [GAMETES_Example_Output.txt](sampleData/GAMETES_Example_Output.txt)
 
 See below example
 ```sh
@@ -139,7 +139,7 @@ $ bash GAMETES_2_EPI.sh sampleData/GAMETES_Example_Output
 $ ls sampleData/GAMETES_Example_Output*
 ```
 
-# Synthetic dataset used for performance and accuracy tesing in the paper.
+# Synthetic dataset used for performance and accuracy testing in the paper.
 
 2-SNP (pairwise) and 3-SNP (triplet) 
 
@@ -152,7 +152,7 @@ $ ls sampleData/GAMETES_Example_Output*
 - [Data](https://variant-spark.s3-ap-southeast-2.amazonaws.com/BitEpiDataSet/Data/SimData_MACOED.tar.gz)
 - Models are not provided.
 - Data can be also downloaded from (its in csv not tsv) [here](www.csbio.sjtu.edu.cn/bioinf/MACOED/)
-- GAMETES format only (use the convertor above)
+- GAMETES format only (use the converter above)
 
 Performance (runtime) testing datasets:
 
@@ -161,32 +161,43 @@ Performance (runtime) testing datasets:
 
 # Visualization
 
-You can Visualize the best interactions (see best mode description above) using a [Cytoscape](https://cytoscape.org/) Graph.
-[BitEpiVis.R](Visualization/BitEpiVis.R) provides a function that reads the output of BitEpi "-best" analysis and turn it to an interactive Cytoscape graph. It also generates a static igraph plot in Rstudio. (See the example screenshot [Visualization/BitEpiVisScreenshot.png]). In the graph, you select and move nodes around. **Node color** represents if the node is a SNP node or an interaction node (see below). **Node size** represents the combined association power (Beta).
+You can Visualize the best interactions (see best mode described above) using a [Cytoscape](https://cytoscape.org/) Graph.
+[BitEpiVis.R](Visualization/BitEpiVis.R) provides a function that reads the output of BitEpi "-best" analysis and turn it to an interactive Cytoscape graph. It also generates a static igraph plot in Rstudio. (See the example screenshot below). In the graph, you can select and move nodes around. **Node color** represents if the node is an SNP node or an interaction node (see below). **Node size** represents the combined association power (**Beta**).
 
 **Initialization**
 
-To get a nice plot in Cytoscope you shold first import our style file [Visualization/BitEpiCytoscapeStyle.xml]. Open Cytoscape and from *File* menu select *Import* and then select *Style from File...* and choose [Visualization/BitEpiCytoscapeStyle.xml].
-In the *Style* tab of the *Control Panel*, select *BitEpi* in the style dropdown menu. In the *Style* tab click on the menu buttom (three horizontal line) and select *Make Current Style Default*
+To get a nice plot in Cytoscope you should first import our style file [BitEpiCytoscapeStyle.xml](Visualization/BitEpiCytoscapeStyle.xml). Open Cytoscape and from *File* menu select *Import* and then select *Style from File...* and choose [BitEpiCytoscapeStyle.xml](Visualization/BitEpiCytoscapeStyle.xml).
+In the *Style* tab of the *Control Panel*, select *BitEpi* in the style dropdown menu. In the *Style* tab click on the menu button (three horizontal lines) and select *Make Current Style Default*
 
 **Run the R code**
 
-As you can see in the example screenshot, at the end of the [Visualization/BitEpiVis.R] the **thr** variable is defined. It is the number of most significant SNPs (1-SNP) and interactions (2-SNP, 3-SNP and 4-SNP) you want to include in the graph (based on Alpha).
+As you can see in the example screenshot, at the end of the [BitEpiVis.R](Visualization/BitEpiVis.R) the **thr** variable is defined. It is the number of most significant SNPs (1-SNP) and interactions (2-SNP, 3-SNP, and 4-SNP) you want to include in the graph (based on Alpha).
 
-The **DoItAll** function takes the path to the BitEpi best output and generate the graph. You should leave Cytoscape open when you run the R code. Once the Graph appears in Cytoscape, from *Layout* menu choose *Grid Layout* (make sure BitEpi style is selected before that). Now you can see the nice plot.
+The **DoItAll** function takes the path to the BitEpi best output and generates the graph. You should leave Cytoscape open when you run the R code. Once the Graph appears in Cytoscape, from *Layout* menu chooses *Grid Layout* (make sure BitEpi style is selected before that). Now you can see the nice plot.
 
-You can drag and drop nodes to create your own custom layout. **When you click on a node and select it, it turns to yellow and you can see its detailes in the table below the graph**. See the example screenshot.
+You can drag and drop nodes to create your custom layout. **When you click on a node and select it, it turns to yellow and you can see its details in the table below the graph**. See the example screenshot.
 
 **Node Colors**
 
-Interactions are shown with Blue, Orange and Green for 2-SNP, 3-SNP and 4-SNP significant interactiosns you choose to see.
-Significant SNP are shows in Red. Other SNPs are shown in grey (they are there beacuse they are part of one of the significant intraction node). You can change the colors using the **Color** variable defined in the top of R code.
+Interactions are shown with Blue, Orange, and Green for 2-SNP, 3-SNP and 4-SNP significant interactions you choose to see.
+Significant SNPs are shown in Red. Other SNPs are shown in grey (they are there because they are part of one of the significant interaction). You can change the colors using the **Color** variable defined at the top of the R code.
 
 **Node Sizes**
 
-***You cannot compare node size of two different plot*** as node sizes are scaled to make all node in each plot visible. 
+***You cannot compare the node size of two different plot*** as node sizes are scaled to make all nodes in each plot visible. 
 You can change the node size scale using *minNodeSize* and *maxNodeSize* in the R code (see example screenshots).
-Note that grey node represent minimum node size.
+Note that grey nodes represent the minimum node size.
+
+```{r}
+Color=list(SNP='red',PAIR='blue',TRIPLET='orange',QUADLET='green', OTHER='gray')
+
+thr=list(SNP=3,PAIR=3,TRIPLET=3,QUADLET=3)
+
+minNodeSize = 10
+maxNodeSize = 35
+
+DoItAll('sampleData/out.best.csv', thr, minNodeSize, maxNodeSize)
+```
 
 ![](Visualization/BitEpiVisScreenshot.png?raw=true)
 
