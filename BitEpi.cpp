@@ -41,7 +41,7 @@ void pthread_join(pthread_t thread, void **retval)
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include "time.h"
+#include <chrono>
 #include "math.h"
 #include "csvparser.h"
 
@@ -80,6 +80,12 @@ const uint32 byte_in_word = sizeof(word);
 double ***tripletBeta;
 double **PairBeta;
 double *SnpBeta;
+
+template <class D1,class D2>
+double difftime(D1 end, D2 begin)
+{
+	return std::chrono::duration<double,std::ratio<1,1>>(end - begin).count();
+}
 
 double  factorial(uint32 n)
 {
@@ -205,7 +211,7 @@ struct ARGS
 		numJobs = -1;
 		for (uint32 o = 0; o < MAX_ORDER; o++)
 			beta[o] = alpha[o] = -1;
-		srand(time(NULL));
+		srand(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 		sprintf(output, "OUTPUT_BitEpi_%012u", rand());
 		sprintf(sshCmd, "ssh ");
 		sprintf(scpCmd, "scp ");
@@ -2440,14 +2446,14 @@ public:
 				printf("\n");
 				printf("\n Processing %u jobs [%u..%u] in parallel", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
 				
-				time_t begin = time(NULL);
+				auto begin = std::chrono::high_resolution_clock::now();
 				
 				OpenFiles(o);
 				args.WorkloadDivider(o + 1, dataset->numVariable);
 				MultiThread(o);
 				CloseFiles(o);
 
-				time_t end = time(NULL);
+				auto end = std::chrono::high_resolution_clock::now();
 				double time_spent = difftime(end, begin);
 				if (time_spent == 0)
 					time_spent = 1;
@@ -2457,7 +2463,7 @@ public:
 				{
 					c += args.jobs[i + args.firstJobIdx].comb;
 				}
-				printf("\n All jobs are compeleted in %10.0f seconds (%10.0f tests per second)", time_spent, c/time_spent);
+				printf("\n All jobs are compeleted in %10.3f seconds (%10.0f tests per second)", time_spent, c/time_spent);
 				printf("\n");
 			}
 		}
@@ -2564,15 +2570,15 @@ void *EpiThread_1(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_1(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2585,15 +2591,15 @@ void *EpiThread_2(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_2(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2606,15 +2612,15 @@ void *EpiThread_3(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_3(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2627,15 +2633,15 @@ void *EpiThread_4(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_4(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n");
 	return NULL;
 }
