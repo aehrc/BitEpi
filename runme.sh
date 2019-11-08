@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 set -x
 
 #Examples on how to run BitEpi

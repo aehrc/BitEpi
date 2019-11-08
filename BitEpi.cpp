@@ -2801,7 +2801,7 @@ void MasterProgram(ARGS args)
 			printf("\n [%5u] Generate and copy script file", i+1);
 			sprintf(computeNodes[i].script, "%s_Script_%u.sh", args.output, i);
 			FILE *runme = fopen(computeNodes[i].script, "w");
-			fprintf(runme, "%s\n", "#!bin/bash");
+			fprintf(runme, "%s\n", "#!/bin/bash");
 			//fprintf(runme, "%s\n", "set -x");
 			fprintf(runme, "cd %s\n", computeNodes[i].dir);
 			fprintf(runme, "%s\n", "git clone https://github.com/aehrc/BitEpi.git");
