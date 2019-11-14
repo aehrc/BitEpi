@@ -168,6 +168,8 @@ struct ARGS
 	// In the cloud/cluster mode (-c) the program will parallelize the outter loop over all 'numJobs' and run 'numThreads' jobs in parallele.
 	// The first and the last job index to run are 'firstJobIdx' and 'firstJobIdx+numThreads-1' respectively
 	bool clusterMode;
+	bool clusterAlpha;
+	uint32 clusterOrder;
 
 	uint32 numJobs;     // the best value is the total number of threads in the cluster.
 	JOB    *jobs;
@@ -210,6 +212,9 @@ struct ARGS
 		sprintf(sshCmd, "ssh ");
 		sprintf(scpCmd, "scp ");
 		bufRatio = 10;
+
+		clusterAlpha = false;
+		clusterOrder = -1;
 	}
 
 	~ARGS()
@@ -220,14 +225,14 @@ struct ARGS
 		}
 	}
 	
-	void WorkloadDividerHigherOrder(uint32 order, uint32 numVar)
+	void WorkloadDividerHigherOrder(uint32 order, uint32 numVar, uint32 numJobsToDivide)
 	{
 		uint32 lorder = order - 2;
 
 		jobs[0].s[0] = 0;
 		jobs[0].s[1] = 1;
 
-		if (numJobs == 1)
+		if (numJobsToDivide == 1)
 		{
 			jobs[0].e[0] = numVar - order;
 			jobs[0].e[1] = (numVar - order) + 1;
@@ -291,7 +296,7 @@ struct ARGS
 							jobs[idxJob].s[1] = j;
 							sumComb = comb;
 						}
-						if (idxJob == (numJobs - 1))
+						if (idxJob == (numJobsToDivide - 1))
 						{
 							break;
 						}
@@ -299,7 +304,7 @@ struct ARGS
 					else
 						sumComb += comb;
 				}
-				if (idxJob == (numJobs - 1))
+				if (idxJob == (numJobsToDivide - 1))
 				{
 					break;
 				}
@@ -313,7 +318,7 @@ struct ARGS
 		}
 	}
 	
-	void WorkloadDivider2Snp(uint32 order, uint32 numVar)
+	void WorkloadDivider2Snp(uint32 order, uint32 numVar, uint32 numJobsToDivide)
 	{
 		uint32 lorder = order - 1;
 
@@ -376,29 +381,29 @@ struct ARGS
 		}
 	}
 
-	void WorkloadDivider(uint32 order, uint32 numVar)
+	void WorkloadDivider(uint32 order, uint32 numVar, uint32 numJobsToDivide)
 	{
 		if (jobs)
 		{
 			delete[] jobs;
 		}
 
-		jobs = new JOB[numJobs];
+		jobs = new JOB[numJobsToDivide];
 		NULL_CHECK(jobs);
 
-		memset(jobs, 0, sizeof(JOB)*numJobs);
+		memset(jobs, 0, sizeof(JOB)*numJobsToDivide);
 
 		numComb = Combination(numVar, order);
-		avgJobNumCombinations = numComb / numJobs;
+		avgJobNumCombinations = numComb / numJobsToDivide;
 		printf("\n Total   number of %u-SNP combinations to be tested:         %20.0f", order, numComb);
-		printf("\n Total   number of jobs:                                    %20u", numJobs);
+		printf("\n Total   number of jobs:                                    %20u", numJobsToDivide);
 		printf("\n Average number of combintions to be tested in each job:    %20.0f", avgJobNumCombinations);
 		printf("\n");
 
-		if ((avgJobNumCombinations < MIN_COMB_IN_JOB) && (numJobs != 1))
+		if ((avgJobNumCombinations < MIN_COMB_IN_JOB) && (numJobsToDivide != 1))
 		{
 			printf("\n Average number of combination to be tested in each job is less than minimum (%10f)", MIN_COMB_IN_JOB);
-			uint32 iJob = (numJobs / (MIN_COMB_IN_JOB / avgJobNumCombinations)) - 1;
+			uint32 iJob = (numJobsToDivide / (MIN_COMB_IN_JOB / avgJobNumCombinations)) - 1;
 			if (iJob < 1)
 				iJob = 1;
 			if (clusterMode)
@@ -410,26 +415,26 @@ struct ARGS
 		}
 
 		printf("\n Breaking the program into similar sized jobs");
-
+		
 		if (order == 1) // 1-SNP
 		{
-			for (uint32 i = 0; i < numJobs; i++)
+			for (uint32 i = 0; i < numJobsToDivide; i++)
 			{
 				jobs[i].s[0] = i * avgJobNumCombinations;
 				jobs[i].e[0] = ((i + 1) * avgJobNumCombinations) - 1;
 				jobs[i].comb = avgJobNumCombinations;
 			}
-			jobs[numJobs-1].e[0] = numVar-1;
-			jobs[numJobs - 1].comb = jobs[numJobs - 1].e[0] - jobs[numJobs - 1].s[0] + 1;
+			jobs[numJobsToDivide-1].e[0] = numVar-1;
+			jobs[numJobsToDivide - 1].comb = jobs[numJobsToDivide - 1].e[0] - jobs[numJobsToDivide - 1].s[0] + 1;
 		}
 		else if (order == 2) // 2-SNP Only breaks outer loop
-			WorkloadDivider2Snp(order, numVar);
+			WorkloadDivider2Snp(order, numVar, numJobsToDivide);
 		else // 3-SNP 4-SNP  breaks to two most outer loops
-			WorkloadDividerHigherOrder(order, numVar);
+			WorkloadDividerHigherOrder(order, numVar, numJobsToDivide);
 
 		if (order >= 2)
 			jobs[0].PrintHead();
-		for (uint32 i = 0; i < numJobs; i++)
+		for (uint32 i = 0; i < numJobsToDivide; i++)
 		{
 			if (order == 2)
 			{
@@ -499,6 +504,8 @@ struct ARGS
 		uint32 o = 0;
 		char str[100];
 		bool next = false;
+
+		// Read arguments
 
 		for (int i = 1; i < argc; i++)
 		{
@@ -844,6 +851,34 @@ struct ARGS
 				printf("\n best mode does not work in cluster/cloud mode yet");
 				PrintHelp(argv[0]);
 			}
+
+			uint anCnt = 0;
+			for (uint32 i = 0; i < 4; i++)
+			{
+				if (betaGiven[i])
+				{
+					anCnt++;
+					clusterAlpha = false;
+					clusterOrder = i;
+				}
+				if (alphaGiven[i])
+				{
+					anCnt++;
+					clusterAlpha = true;
+					clusterOrder = i;
+				}
+			}
+			if (anCnt > 1)
+			{
+				printf("\n In cluster mode only one analysis (alpha or beta) can be executed");
+				PrintHelp(argv[0]);
+			}
+			if(clusterOrder==0)
+			{
+				printf("\n cluster mode works only for 2-SNP, 3-SNP and 4-SNP tests but not 1-SNP test");
+				PrintHelp(argv[0]);
+			}
+
 			if(numJobs==-1 || firstJobIdx==-1)
 			{
 				printf("\n Specify number of jobs (-j) and first job index (-f) in cluster/cloud mode (-c presented)");
@@ -1608,10 +1643,10 @@ public:
 
 	void OpenFiles(uint32 order)
 	{
-		topBetaFile = new FILE*[args.numThreads];
+		topBetaFile = new FILE*[args.jobsToDo];
 		NULL_CHECK(topBetaFile);
 
-		topAlphaFile = new FILE*[args.numThreads];
+		topAlphaFile = new FILE*[args.jobsToDo];
 		NULL_CHECK(topAlphaFile);
 
 		char* fn = new char[strlen(args.output) + 20];
@@ -1619,10 +1654,7 @@ public:
 		for (uint32 j = 0; j < args.jobsToDo; j++)
 		{
 			char postfix[100];
-			if (args.clusterMode)
-				sprintf(postfix, "%u.%u.%u.%u", order + 1, args.firstJobIdx, args.lastJobIdx, args.firstJobIdx + j);
-			else
-				sprintf(postfix, "%u.%u", order + 1, args.firstJobIdx + j);
+			sprintf(postfix, "%u.%u", order + 1, args.firstJobIdx + j);
 
 			if (args.printBeta[order])
 			{
@@ -1642,7 +1674,7 @@ public:
 
 	void CloseFiles(uint32 order)
 	{
-		for (uint32 t = 0; t < args.numThreads; t++)
+		for (uint32 t = 0; t < args.jobsToDo; t++)
 		{
 			if (args.printBeta[order])
 			{
@@ -2398,22 +2430,25 @@ public:
 		FreeThreadMemory(OIDX);
 	}
 
-	void MultiThread(uint32 o)
+	void MultiThread(uint32 o, uint32 numThread, uint32 firstJobIdx)
 	{
-		pthread_t *threads = new pthread_t[args.jobsToDo];
-		ThreadData *td = new ThreadData[args.jobsToDo];
+		ThreadData *td = new ThreadData[numThread];
+		NULL_CHECK(td);
+		
+		pthread_t *threads = new pthread_t[numThread];
+		NULL_CHECK(threads);
 
-		for (uint32 i = 0; i < args.jobsToDo; i++)
+		for (uint32 i = 0; i < numThread; i++)
 		{
 			td[i].epiStat = (void *) new EpiStat(this);
 			td[i].threadId = i;
-			td[i].jobId = i + args.firstJobIdx;
+			td[i].jobId = i + firstJobIdx;
 		}
-		for (uint32 i = 0; i < args.jobsToDo; i++)
+		for (uint32 i = 0; i < numThread; i++)
 		{
 				pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
 		}
-		for (uint32 i = 0; i < args.jobsToDo; i++)
+		for (uint32 i = 0; i < numThread; i++)
 		{
 				pthread_join(threads[i], NULL);
 				if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
@@ -2443,8 +2478,8 @@ public:
 				time_t begin = time(NULL);
 				
 				OpenFiles(o);
-				args.WorkloadDivider(o + 1, dataset->numVariable);
-				MultiThread(o);
+				args.WorkloadDivider(o + 1, dataset->numVariable, args.numJobs);
+				MultiThread(o, args.jobsToDo, args.firstJobIdx);
 				CloseFiles(o);
 
 				time_t end = time(NULL);
@@ -2492,19 +2527,13 @@ public:
 				{
 					printf("\n Merge Beta%u files...", order + 1);
 					// create a merged output file
-					if (args.clusterMode)
-						sprintf(cmd, "cat %s.Beta.%s.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%s.csv", args.output, postfix, sortCmd, header, args.output, postfix);
-					else
-						sprintf(cmd, "cat %s.Beta.%u.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
+					sprintf(cmd, "cat %s.Beta.%u.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
 					
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot merge output files");
 					
-					if (args.clusterMode)
-						sprintf(cmd, "rm %s.Beta.%s.*.csv", args.output, postfix);
-					else
-						sprintf(cmd, "rm %s.Beta.%u.*.csv", args.output, order + 1);
+					sprintf(cmd, "rm %s.Beta.%u.*.csv", args.output, order + 1);
 					
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
@@ -2514,19 +2543,14 @@ public:
 				{
 					printf("\n Merge Alpha%u files...", order + 1);
 					// create a merged output file
-					if (args.clusterMode)
-						sprintf(cmd, "cat %s.Alpha.%s.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Alpha.%s.csv", args.output, postfix, sortCmd, header, args.output, postfix);
-					else
-						sprintf(cmd, "cat %s.Alpha.%u.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Alpha.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
+					
+					sprintf(cmd, "cat %s.Alpha.%u.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Alpha.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
 					
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot merge output files");
 					
-					if (args.clusterMode)
-						sprintf(cmd, "rm %s.Alpha.%s.*.csv", args.output, postfix);
-					else
-						sprintf(cmd, "rm %s.Alpha.%u.*.csv", args.output, order + 1);
+					sprintf(cmd, "rm %s.Alpha.%u.*.csv", args.output, order + 1);
 					
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
@@ -2543,13 +2567,80 @@ public:
 
 			char* fn = new char[strlen(args.output) + 20];
 			NULL_CHECK(fn);
-			if(args.clusterMode)
-				sprintf(fn, "%s.best.%u.%u.csv", args.output, args.firstJobIdx, args.lastJobIdx);
-			else
-				sprintf(fn, "%s.best.csv", args.output);
+			
+			sprintf(fn, "%s.best.csv", args.output);
+			
 			dataset->results->toCSV(fn, dataset->nameVariable);
 			delete[]fn;
 		}
+
+		FreeBeta(dataset->numVariable, &args);
+		dataset->FreeMemory(&args);
+	}
+
+	void RunCluster() // to be implemented
+	{
+		AllocateBeta(dataset->numVariable, args);
+
+		if (args.clusterAlpha)
+		{
+			printf("\n >>>>> Compute and store lower order beta on each node independently (number of jobs is set to number of threads).");
+
+			uint32 o = args.clusterOrder - 1;
+
+			printf("\n >>>>>> %u-SNP exhaustive search", o + 1);
+			printf("\n");
+			printf("\n Processing %u jobs [%u..%u] in parallel", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
+
+			time_t begin = time(NULL);
+
+			args.WorkloadDivider(o + 1, dataset->numVariable, args.numThreads);
+			MultiThread(o, args.numThreads, 0);
+
+			time_t end = time(NULL);
+			double time_spent = difftime(end, begin);
+			if (time_spent == 0)
+				time_spent = 1;
+
+			double c = 0;
+			for (uint32 i = 0; i < args.numThreads; i++)
+			{
+				c += args.jobs[i].comb;
+			}
+			printf("\n All jobs are compeleted in %10.0f seconds (%10.0f tests per second)", time_spent, c / time_spent);
+			printf("\n");
+		}
+
+		if(args.clusterAlpha)
+			printf("\n >>>>> Compute alpha on the cluster.");
+		else
+			printf("\n >>>>> Compute beta on the cluster.");
+
+		uint32 o = args.clusterOrder;
+
+		printf("\n >>>>>> %u-SNP exhaustive search", o + 1);
+		printf("\n");
+		printf("\n Processing %u jobs [%u..%u] in parallel", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
+
+		time_t begin = time(NULL);
+
+		OpenFiles(o);
+		args.WorkloadDivider(o + 1, dataset->numVariable, args.numJobs);
+		MultiThread(o, args.jobsToDo, args.firstJobIdx);
+		CloseFiles(o);
+
+		time_t end = time(NULL);
+		double time_spent = difftime(end, begin);
+		if (time_spent == 0)
+			time_spent = 1;
+
+		double c = 0;
+		for (uint32 i = 0; i < args.jobsToDo; i++)
+		{
+			c += args.jobs[i + args.firstJobIdx].comb;
+		}
+		printf("\n All jobs are compeleted in %10.0f seconds (%10.0f tests per second)", time_spent, c / time_spent);
+		printf("\n");
 
 		FreeBeta(dataset->numVariable, &args);
 		dataset->FreeMemory(&args);
@@ -2640,7 +2731,9 @@ void *EpiThread_4(void *t)
 	return NULL;
 }
 
+#ifdef V2
 #ifndef _MSC_VER
+
 void RunCmd(char *cmd, char *res)
 {
 	FILE *fp;
@@ -2887,9 +2980,22 @@ void MasterProgram(ARGS args)
 			RunCmd(cmd, res);
 		}
 	}
+
+	printf("\n\n Remove temp directory from compute nodes\n");
+	for (uint32 i = 0; i < numComputeNode; i++)
+	{
+		if (computeNodes[i].threads > 0)
+		{
+			sprintf(cmd, "%s %s rm -rf %s", args.sshCmd, computeNodes[i].userAdr, computeNodes[i].dir);
+			//printf("\n cmd >>> %s\n", cmd);
+			RunCmd(cmd, res);
+		}
+	}
 	printf("\n Compeleted \n");
 	return;
 }
+
+#endif
 #endif
 
 int main(int argc, char *argv[])
@@ -2904,13 +3010,15 @@ int main(int argc, char *argv[])
 	args.Parse(argc, argv);
 	args.Print();
 
+#ifdef V2
+#ifndef _MSC_VER
 	if (args.master)
 	{
-#ifndef _MSC_VER
 		MasterProgram(args);
-#endif
 		return 0; 
 	}
+#endif
+#endif
 
 	Dataset dataset;
 	dataset.ReadDataset(args.input);
@@ -2919,7 +3027,10 @@ int main(int argc, char *argv[])
 	EpiStat epiStat;
 	epiStat.Init(&dataset, args, EpiThread_1, EpiThread_2, EpiThread_3, EpiThread_4);
 
-	epiStat.Run();
+	if (args.clusterMode)
+		epiStat.RunCluster();
+	else
+		epiStat.Run();
 
 #ifdef PTEST
 	printf("\n============= per-Operation Performance (for Performance testing)");
