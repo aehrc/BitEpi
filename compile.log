@@ -1,7 +1,3 @@
 + g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread
-BitEpi.cpp: In function ‘void RunCmd(char*, char*)’:
-BitEpi.cpp:2655:23: warning: ignoring return value of ‘int fscanf(FILE*, const char*, ...)’, declared with attribute warn_unused_result [-Wunused-result]
-  fscanf(fp, "%s", res);
-                       ^
 + chmod 777 BitEpi.o
 + exit
