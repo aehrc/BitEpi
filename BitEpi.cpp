@@ -42,6 +42,7 @@ void pthread_join(pthread_t thread, void **retval)
 #include "stdlib.h"
 #include "string.h"
 #include <chrono>
+#include <iostream>
 #include "math.h"
 #include "csvparser.h"
 
@@ -116,12 +117,6 @@ double Combination(uint32 v, uint32 o)
 	default: ERROR("Does not support combination above 4");
 	}
 }
-
-union WordByte
-{
-	word w;
-	uint8 b[8];
-};
 
 struct JOB
 {
@@ -1787,37 +1782,30 @@ public:
 		}
 	}
 
+	void countVariantCombinations(sampleIdx * contingencyTable, uint64_t variantsIn8Samples)
+	{
+		//each of the 8 bytes contains the variants of a single sample
+		for(int byte = 0; byte < 8; byte++)
+		{
+	        	//increment count of given byte representing a variant combination
+	        	contingencyTable[(variantsIn8Samples>>(byte*8))&0xFF]++;
+		}
+	}
+
 	void OR_1x(varIdx idx)
 	{
 		const uint32 OIDX = 0; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
-		WordByte wb;
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			wb.w = caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
+			countVariantCombinations(contingencyCase, caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			wb.w = ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
+			countVariantCombinations(contingencyCtrl, ctrlData[i]);
 		}
 	}
 
@@ -1827,31 +1815,14 @@ public:
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
-		WordByte wb;
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
+			countVariantCombinations(contingencyCase, epiCaseWord[OIDX - 1][i] | caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
+			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
 		}
 	}
 
@@ -1861,31 +1832,14 @@ public:
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
-		WordByte wb;
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
+			countVariantCombinations(contingencyCase, epiCaseWord[OIDX - 1][i] | caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
+			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
 		}
 	}
 
@@ -1895,31 +1849,14 @@ public:
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
-		WordByte wb;
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
+			countVariantCombinations(contingencyCase,epiCaseWord[OIDX - 1][i] | caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
+			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
 		}
 	}
 
@@ -2010,9 +1947,9 @@ public:
 			double nCtrl = (double)contingencyCtrl[index];
 			double sum = nCase + nCtrl;
 			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
+				beta += (P2(nCase) + P2(nCtrl)) / sum;
 		}
-		return beta;
+		return beta/dataset->numSample;
 	}
 
 	void Epi_1(ThreadData *td)
