@@ -1731,54 +1731,21 @@ public:
 		}
 	}
 
-	void OR_1(varIdx idx)
+	template <uint32_t N>
+	void OR(varIdx idx)
 	{
-		const uint32 OIDX = 0; // SNP
+		const uint32 OIDX = N-1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			epiCaseWord[OIDX][i] = caseData[i];
+			epiCaseWord[OIDX][i] = (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i];
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			epiCtrlWord[OIDX][i] = ctrlData[i];
-		}
-	}
-
-	void OR_2(varIdx idx)
-	{
-		const uint32 OIDX = 1; // Pair
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			epiCaseWord[OIDX][i] = epiCaseWord[OIDX - 1][i] | caseData[i];
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			epiCtrlWord[OIDX][i] = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-		}
-	}
-
-	void OR_3(varIdx idx)
-	{
-		const uint32 OIDX = 2; // Triplet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			epiCaseWord[OIDX][i] = epiCaseWord[OIDX - 1][i] | caseData[i];
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			epiCtrlWord[OIDX][i] = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
+			epiCtrlWord[OIDX][i] = (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i];
 		}
 	}
 
@@ -1791,72 +1758,21 @@ public:
 	        	contingencyTable[(variantsIn8Samples>>(byte*8))&0xFF]++;
 		}
 	}
-
-	void OR_1x(varIdx idx)
+	template <uint32_t N>
+	void OR_x(varIdx idx)
 	{
-		const uint32 OIDX = 0; // SNPs
+		const uint32 OIDX = N-1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
+		
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			countVariantCombinations(contingencyCase, caseData[i]);
+			countVariantCombinations(contingencyCase, (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			countVariantCombinations(contingencyCtrl, ctrlData[i]);
-		}
-	}
-
-	void OR_2x(varIdx idx)
-	{
-		const uint32 OIDX = 1; // Pair
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			countVariantCombinations(contingencyCase, epiCaseWord[OIDX - 1][i] | caseData[i]);
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
-		}
-	}
-
-	void OR_3x(varIdx idx)
-	{
-		const uint32 OIDX = 2; // Triplet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			countVariantCombinations(contingencyCase, epiCaseWord[OIDX - 1][i] | caseData[i]);
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
-		}
-	}
-
-	void OR_4x(varIdx idx)
-	{
-		const uint32 OIDX = 3; // Quadlet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			countVariantCombinations(contingencyCase,epiCaseWord[OIDX - 1][i] | caseData[i]);
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			countVariantCombinations(contingencyCtrl, epiCtrlWord[OIDX - 1][i] | ctrlData[i]);
+			countVariantCombinations(contingencyCtrl, (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i]);
 		}
 	}
 
@@ -1974,7 +1890,7 @@ public:
 #ifdef PTEST
 			clock_t xc2 = clock();
 #endif
-			OR_1x(idx[0]);
+			OR_x<1>(idx[0]);
 #ifdef PTEST
 			clock_t xc3 = clock();
 #endif
@@ -2052,7 +1968,7 @@ public:
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
 			{
 				cnt++;
@@ -2063,7 +1979,7 @@ public:
 #ifdef PTEST
 				clock_t xc2 = clock();
 #endif
-				OR_2x(idx[1]);
+				OR_x<2>(idx[1]);
 #ifdef PTEST
 				clock_t xc3 = clock();
 #endif
@@ -2152,10 +2068,10 @@ public:
 			else
 				e = (dataset->numVariable - (OIDX - 1)) - 1;
 			
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++)
 			{
-				OR_2(idx[1]);
+				OR<2>(idx[1]);
 				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariable; idx[2]++)
 				{
 					cnt++;
@@ -2166,7 +2082,7 @@ public:
 #ifdef PTEST
 					clock_t xc2 = clock();
 #endif
-					OR_3x(idx[2]);
+					OR_x<3>(idx[2]);
 #ifdef PTEST
 					clock_t xc3 = clock();
 #endif
@@ -2257,13 +2173,13 @@ public:
 			else
 				e = (dataset->numVariable - (OIDX - 1)) - 1;
 
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++) 
 			{
-				OR_2(idx[1]);
+				OR<2>(idx[1]);
 				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariable - (OIDX - 2)); idx[2]++)
 				{
-					OR_3(idx[2]);
+					OR<3>(idx[2]);
 					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariable; idx[3]++)
 					{
 						cnt++;
@@ -2274,7 +2190,7 @@ public:
 #ifdef PTEST
 						clock_t xc2 = clock();
 #endif
-						OR_4x(idx[3]);
+						OR_x<4>(idx[3]);
 #ifdef PTEST
 						clock_t xc3 = clock();
 #endif
