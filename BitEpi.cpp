@@ -70,7 +70,15 @@ const uint8 cti[81] = { 0,1,2,4,5,6,8,9,10,16,17,18,20,21,22,24,25,26,32,33,34,3
 const uint32 byte_in_word = sizeof(word);
 
 #define MAX_ORDER 4
-
+template <uint32_t EXP>
+uint32_t integerPow(uint32_t x)
+{
+	return integerPow<EXP-1>(x)*x;
+}
+template<>
+uint32_t integerPow<1>(uint32_t x){return x;}
+template<>
+uint32_t integerPow<0>(uint32_t){return 1;}
 #define P2(X) (X*X)
 #define P3(X) (X*X*X)
 #define P4(X) (X*X*X*X)
@@ -1775,85 +1783,18 @@ public:
 			countVariantCombinations(contingencyCtrl, (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i]);
 		}
 	}
-
-	void ResetContigencyTable_1()
+	template<uint32_t N>
+	void resetContigencyTable()
 	{
-		memset(contingencyCtrl, 0, 4 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 4 * sizeof(sampleIdx));
+		size_t arraySize = (1 << (2*N)) * sizeof(sampleIdx);
+		memset(contingencyCtrl, 0, arraySize);
+		memset(contingencyCase, 0, arraySize);
 	}
 
-	void ResetContigencyTable_2()
+	template <uint32_t N>
+	double Gini()
 	{
-		memset(contingencyCtrl, 0, 16 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 16 * sizeof(sampleIdx));
-	}
-
-	void ResetContigencyTable_3()
-	{
-		memset(contingencyCtrl, 0, 64 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 64 * sizeof(sampleIdx));
-	}
-
-	void ResetContigencyTable_4()
-	{
-		memset(contingencyCtrl, 0, 256 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 256 * sizeof(sampleIdx));
-	}
-
-	double Gini_1()
-	{
-		const uint32 entry = 3;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
-	}
-
-	double Gini_2()
-	{
-		const uint32 entry = 9;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
-	}
-
-	double Gini_3()
-	{
-		const uint32 entry = 27;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
-	}
-
-	double Gini_4()
-	{
-		const uint32 entry = 81;
+		const uint32 entry = integerPow<N>(3);
 		double beta = 0;
 
 		for (uint32 i = 0; i < entry; i++)
@@ -1886,7 +1827,7 @@ public:
 #ifdef PTEST
 			clock_t xc1 = clock();
 #endif
-			ResetContigencyTable_1();
+			resetContigencyTable<1>();
 #ifdef PTEST
 			clock_t xc2 = clock();
 #endif
@@ -1895,7 +1836,7 @@ public:
 			clock_t xc3 = clock();
 #endif
 			// compute beta
-			double b = Gini_1();
+			double b = Gini<1>();
 			c.power = b;
 #ifdef PTEST
 			clock_t xc4 = clock();
@@ -1975,7 +1916,7 @@ public:
 #ifdef PTEST
 				clock_t xc1 = clock();
 #endif
-				ResetContigencyTable_2();
+				resetContigencyTable<2>();
 #ifdef PTEST
 				clock_t xc2 = clock();
 #endif
@@ -1984,7 +1925,7 @@ public:
 				clock_t xc3 = clock();
 #endif
 				// compute beta
-				double b = Gini_2();
+				double b = Gini<2>();
 				c.power = b;
 #ifdef PTEST
 				clock_t xc4 = clock();
@@ -2078,7 +2019,7 @@ public:
 #ifdef PTEST
 					clock_t xc1 = clock();
 #endif
-					ResetContigencyTable_3();
+					resetContigencyTable<3>();
 #ifdef PTEST
 					clock_t xc2 = clock();
 #endif
@@ -2087,7 +2028,7 @@ public:
 					clock_t xc3 = clock();
 #endif
 					// compute beta
-					double b = Gini_3();
+					double b = Gini<3>();
 					c.power = b;
 #ifdef PTEST
 					clock_t xc4 = clock();
@@ -2186,7 +2127,7 @@ public:
 #ifdef PTEST
 						clock_t xc1 = clock();
 #endif
-						ResetContigencyTable_4();
+						resetContigencyTable<4>();
 #ifdef PTEST
 						clock_t xc2 = clock();
 #endif
@@ -2195,7 +2136,7 @@ public:
 						clock_t xc3 = clock();
 #endif
 						// compute beta
-						double b = Gini_4();
+						double b = Gini<4>();
 						c.power = b;
 #ifdef PTEST
 						clock_t xc4 = clock();
