@@ -204,4 +204,4 @@ DoItAll('sampleData/out.best.csv', thr, minNodeSize, maxNodeSize)
 # Cite BitEpi
 
 BitEpi is published in bioRxiv and is submitted to Bioinformatics (under review).
-For citation see 'Publication/BitEpi/bioRxiv/cite.bib'.
+For citation see [cite.bib](Publication/BitEpi/bioRxiv/cite.bib) in Publication folder.
