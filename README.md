@@ -203,4 +203,5 @@ DoItAll('sampleData/out.best.csv', thr, minNodeSize, maxNodeSize)
 
 # Cite BitEpi
 
-The paper is not published yet (will be available soon). You may cite our GitHub page for now.
+BitEpi is published in bioRxiv and is submitted to Bioinformatics (under review).
+For citation see 'Publication/BitEpi/bioRxiv/cite.bib'.
