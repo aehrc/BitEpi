@@ -130,13 +130,22 @@ $ cd BitEpi
 $ bash runme.sh
 ```
 
-# Convert GAMETES output
+# Convert GAMETES output to BitEpi input and tplink file
 [GAMETES](http://sourceforge.net/projects/gametes/files/) is an epistasis simulator ([Paper](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3605108)) used in several publications to measure the accuracy of different methods. [GAMETES_2_EPI.sh](GAMETES_2_EPI.sh) converts the GAMETES output to the BitEpi input format and the plink transposed format (tplink). You can process tplink file with MIP3SNP and BOOST (implemented in plink) for performance testing. Note that MDR could process GAMETES output directly. An example GAMETES output is provided: [GAMETES_Example_Output.txt](sampleData/GAMETES_Example_Output.txt)
 
 See below example
 ```sh
 $ bash GAMETES_2_EPI.sh sampleData/GAMETES_Example_Output
 $ ls sampleData/GAMETES_Example_Output*
+```
+
+# Covert VCF file to BitEpi input file
+[VCF_2_EPI.sh](VCF_2_EPI.sh) is a script that uses bcftools and Linux commands to convert a VCF file into BitEpi format. Since VCF file does not include phenotype, the binary phenotype is read from a tab-separated (tsv)sample annotation file (1 line per sample with a header line). You should specify which column holds the binary phenotype ("True" or "False"). The script prints important points about the input argument you should consider. We include an example VCF file (based on 1000-Genome project) and a sample annotation file (with a synthetic phenotype) to try the script. Four important SNPs used to simulate phenotype are listed in [Hipster.known.txt](sampleData/Hipster.known.txt).
+
+See below example
+```sh
+$ bash VCF_2_EPI.sh sampleData/Hipster.vcf.bgz sampleData/Hipster.tsv 2
+$ less -S sampleData/Hipster.vcf.bgz.epi.csv
 ```
 
 # Synthetic dataset used for performance and accuracy testing in the paper.
