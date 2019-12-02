@@ -1771,24 +1771,6 @@ public:
 		}
 	}
 
-	template <uint32_t N>
-	void OR(varIdx idx)
-	{
-		const uint32 OIDX = N-1; // SNPs
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			epiCaseWord[OIDX][i] = (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i];
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			epiCtrlWord[OIDX][i] = (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i];
-		}
-	}
-
 	void countVariantCombinations(sampleIdx * contingencyTable, uint64_t variantsIn8Samples)
 	{
 		//each of the 8 bytes contains the variants of a single sample
@@ -1798,8 +1780,9 @@ public:
 	        	contingencyTable[(variantsIn8Samples>>(byte*8))&0xFF]++;
 		}
 	}
-	template <uint32_t N>
-	void OR_x(varIdx idx)
+	
+	template <uint32_t N,bool CountCombinations = false>
+	void OR(varIdx idx)
 	{
 		const uint32 OIDX = N-1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
@@ -1807,12 +1790,35 @@ public:
 		
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			countVariantCombinations(contingencyCase, (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i]);
+			word variants = caseData[i];
+			
+			if(N>1)
+				variants |= epiCaseWord[OIDX - 1][i];
+		
+			if(CountCombinations)
+			{
+				countVariantCombinations(contingencyCase, variants);
+			}else
+			{
+				epiCaseWord[OIDX][i] = variants;
+			}
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			countVariantCombinations(contingencyCtrl, (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i]);
+			word variants = ctrlData[i];
+			
+			if(N>1)
+				variants |= epiCtrlWord[OIDX - 1][i];
+			
+			
+			if(CountCombinations)
+			{
+				countVariantCombinations(contingencyCtrl, variants);
+			}else
+			{
+				epiCtrlWord[OIDX][i] = variants;
+			}
 		}
 	}
 	template<uint32_t N>
@@ -1863,7 +1869,7 @@ public:
 #ifdef PTEST
 			clock_t xc2 = clock();
 #endif
-			OR_x<1>(idx[0]);
+			OR<1,true>(idx[0]);
 #ifdef PTEST
 			clock_t xc3 = clock();
 #endif
@@ -1952,7 +1958,7 @@ public:
 #ifdef PTEST
 				clock_t xc2 = clock();
 #endif
-				OR_x<2>(idx[1]);
+				OR<2,true>(idx[1]);
 #ifdef PTEST
 				clock_t xc3 = clock();
 #endif
@@ -2055,7 +2061,7 @@ public:
 #ifdef PTEST
 					clock_t xc2 = clock();
 #endif
-					OR_x<3>(idx[2]);
+					OR<3,true>(idx[2]);
 #ifdef PTEST
 					clock_t xc3 = clock();
 #endif
@@ -2163,7 +2169,7 @@ public:
 #ifdef PTEST
 						clock_t xc2 = clock();
 #endif
-						OR_x<4>(idx[3]);
+						OR<4,true>(idx[3]);
 #ifdef PTEST
 						clock_t xc3 = clock();
 #endif
