@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 set -x
 
 g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread

@@ -41,7 +41,8 @@ void pthread_join(pthread_t thread, void **retval)
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
-#include "time.h"
+#include <chrono>
+#include <iostream>
 #include "math.h"
 #include "csvparser.h"
 
@@ -69,7 +70,15 @@ const uint8 cti[81] = { 0,1,2,4,5,6,8,9,10,16,17,18,20,21,22,24,25,26,32,33,34,3
 const uint32 byte_in_word = sizeof(word);
 
 #define MAX_ORDER 4
-
+template <uint32_t EXP>
+uint32_t integerPow(uint32_t x)
+{
+	return integerPow<EXP-1>(x)*x;
+}
+template<>
+uint32_t integerPow<1>(uint32_t x){return x;}
+template<>
+uint32_t integerPow<0>(uint32_t){return 1;}
 #define P2(X) (X*X)
 #define P3(X) (X*X*X)
 #define P4(X) (X*X*X*X)
@@ -80,6 +89,12 @@ const uint32 byte_in_word = sizeof(word);
 double ***tripletBeta;
 double **PairBeta;
 double *SnpBeta;
+
+template <class D1,class D2>
+double difftime(D1 end, D2 begin)
+{
+	return std::chrono::duration<double,std::ratio<1,1>>(end - begin).count();
+}
 
 double  factorial(uint32 n)
 {
@@ -110,12 +125,6 @@ double Combination(uint32 v, uint32 o)
 	default: ERROR("Does not support combination above 4");
 	}
 }
-
-union WordByte
-{
-	word w;
-	uint8 b[8];
-};
 
 struct JOB
 {
@@ -207,7 +216,7 @@ struct ARGS
 		numJobs = -1;
 		for (uint32 o = 0; o < MAX_ORDER; o++)
 			beta[o] = alpha[o] = -1;
-		srand(time(NULL));
+		srand(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 		sprintf(output, "OUTPUT_BitEpi_%012u", rand());
 		sprintf(sshCmd, "ssh ");
 		sprintf(scpCmd, "scp ");
@@ -1762,220 +1771,62 @@ public:
 		}
 	}
 
-	void OR_1(varIdx idx)
+	template <uint32_t N>
+	void OR(varIdx idx)
 	{
-		const uint32 OIDX = 0; // SNP
+		const uint32 OIDX = N-1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
 
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			epiCaseWord[OIDX][i] = caseData[i];
+			epiCaseWord[OIDX][i] = (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i];
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			epiCtrlWord[OIDX][i] = ctrlData[i];
+			epiCtrlWord[OIDX][i] = (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i];
 		}
 	}
 
-	void OR_2(varIdx idx)
+	void countVariantCombinations(sampleIdx * contingencyTable, uint64_t variantsIn8Samples)
 	{
-		const uint32 OIDX = 1; // Pair
+		//each of the 8 bytes contains the variants of a single sample
+		for(int byte = 0; byte < 8; byte++)
+		{
+	        	//increment count of given byte representing a variant combination
+	        	contingencyTable[(variantsIn8Samples>>(byte*8))&0xFF]++;
+		}
+	}
+	template <uint32_t N>
+	void OR_x(varIdx idx)
+	{
+		const uint32 OIDX = N-1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
+		
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
-			epiCaseWord[OIDX][i] = epiCaseWord[OIDX - 1][i] | caseData[i];
+			countVariantCombinations(contingencyCase, (OIDX==0?0:epiCaseWord[OIDX - 1][i]) | caseData[i]);
 		}
 
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
-			epiCtrlWord[OIDX][i] = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
+			countVariantCombinations(contingencyCtrl, (OIDX==0?0:epiCtrlWord[OIDX - 1][i]) | ctrlData[i]);
 		}
 	}
-
-	void OR_3(varIdx idx)
+	template<uint32_t N>
+	void resetContigencyTable()
 	{
-		const uint32 OIDX = 2; // Triplet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			epiCaseWord[OIDX][i] = epiCaseWord[OIDX - 1][i] | caseData[i];
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			epiCtrlWord[OIDX][i] = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-		}
+		size_t arraySize = (1 << (2*N)) * sizeof(sampleIdx);
+		memset(contingencyCtrl, 0, arraySize);
+		memset(contingencyCase, 0, arraySize);
 	}
 
-	void OR_1x(varIdx idx)
+	template <uint32_t N>
+	double Gini()
 	{
-		const uint32 OIDX = 0; // SNPs
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		WordByte wb;
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			wb.w = caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			wb.w = ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
-		}
-	}
-
-	void OR_2x(varIdx idx)
-	{
-		const uint32 OIDX = 1; // Pair
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		WordByte wb;
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
-		}
-	}
-
-	void OR_3x(varIdx idx)
-	{
-		const uint32 OIDX = 2; // Triplet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		WordByte wb;
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
-		}
-	}
-
-	void OR_4x(varIdx idx)
-	{
-		const uint32 OIDX = 3; // Quadlet
-		word *caseData = dataset->GetVarCase(OIDX, idx);
-		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-
-		WordByte wb;
-		for (uint32 i = 0; i < dataset->numWordCase; i++)
-		{
-			wb.w = epiCaseWord[OIDX - 1][i] | caseData[i];
-			contingencyCase[wb.b[0]]++;
-			contingencyCase[wb.b[1]]++;
-			contingencyCase[wb.b[2]]++;
-			contingencyCase[wb.b[3]]++;
-			contingencyCase[wb.b[4]]++;
-			contingencyCase[wb.b[5]]++;
-			contingencyCase[wb.b[6]]++;
-			contingencyCase[wb.b[7]]++;
-		}
-
-		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
-		{
-			wb.w = epiCtrlWord[OIDX - 1][i] | ctrlData[i];
-			contingencyCtrl[wb.b[0]]++;
-			contingencyCtrl[wb.b[1]]++;
-			contingencyCtrl[wb.b[2]]++;
-			contingencyCtrl[wb.b[3]]++;
-			contingencyCtrl[wb.b[4]]++;
-			contingencyCtrl[wb.b[5]]++;
-			contingencyCtrl[wb.b[6]]++;
-			contingencyCtrl[wb.b[7]]++;
-		}
-	}
-
-	void ResetContigencyTable_1()
-	{
-		memset(contingencyCtrl, 0, 4 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 4 * sizeof(sampleIdx));
-	}
-
-	void ResetContigencyTable_2()
-	{
-		memset(contingencyCtrl, 0, 16 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 16 * sizeof(sampleIdx));
-	}
-
-	void ResetContigencyTable_3()
-	{
-		memset(contingencyCtrl, 0, 64 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 64 * sizeof(sampleIdx));
-	}
-
-	void ResetContigencyTable_4()
-	{
-		memset(contingencyCtrl, 0, 256 * sizeof(sampleIdx));
-		memset(contingencyCase, 0, 256 * sizeof(sampleIdx));
-	}
-
-	double Gini_1()
-	{
-		const uint32 entry = 3;
+		const uint32 entry = integerPow<N>(3);
 		double beta = 0;
 
 		for (uint32 i = 0; i < entry; i++)
@@ -1985,60 +1836,9 @@ public:
 			double nCtrl = (double)contingencyCtrl[index];
 			double sum = nCase + nCtrl;
 			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
+				beta += (P2(nCase) + P2(nCtrl)) / sum;
 		}
-		return beta;
-	}
-
-	double Gini_2()
-	{
-		const uint32 entry = 9;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
-	}
-
-	double Gini_3()
-	{
-		const uint32 entry = 27;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
-	}
-
-	double Gini_4()
-	{
-		const uint32 entry = 81;
-		double beta = 0;
-
-		for (uint32 i = 0; i < entry; i++)
-		{
-			uint32 index = cti[i];
-			double nCase = (double)contingencyCase[index];
-			double nCtrl = (double)contingencyCtrl[index];
-			double sum = nCase + nCtrl;
-			if (sum)
-				beta += (P2(nCase) + P2(nCtrl)) / (sum * dataset->numSample);
-		}
-		return beta;
+		return beta/dataset->numSample;
 	}
 
 	void Epi_1(ThreadData *td)
@@ -2059,16 +1859,16 @@ public:
 #ifdef PTEST
 			clock_t xc1 = clock();
 #endif
-			ResetContigencyTable_1();
+			resetContigencyTable<1>();
 #ifdef PTEST
 			clock_t xc2 = clock();
 #endif
-			OR_1x(idx[0]);
+			OR_x<1>(idx[0]);
 #ifdef PTEST
 			clock_t xc3 = clock();
 #endif
 			// compute beta
-			double b = Gini_1();
+			double b = Gini<1>();
 			c.power = b;
 #ifdef PTEST
 			clock_t xc4 = clock();
@@ -2141,23 +1941,23 @@ public:
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
 			{
 				cnt++;
 #ifdef PTEST
 				clock_t xc1 = clock();
 #endif
-				ResetContigencyTable_2();
+				resetContigencyTable<2>();
 #ifdef PTEST
 				clock_t xc2 = clock();
 #endif
-				OR_2x(idx[1]);
+				OR_x<2>(idx[1]);
 #ifdef PTEST
 				clock_t xc3 = clock();
 #endif
 				// compute beta
-				double b = Gini_2();
+				double b = Gini<2>();
 				c.power = b;
 #ifdef PTEST
 				clock_t xc4 = clock();
@@ -2241,26 +2041,26 @@ public:
 			else
 				e = (dataset->numVariable - (OIDX - 1)) - 1;
 			
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++)
 			{
-				OR_2(idx[1]);
+				OR<2>(idx[1]);
 				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariable; idx[2]++)
 				{
 					cnt++;
 #ifdef PTEST
 					clock_t xc1 = clock();
 #endif
-					ResetContigencyTable_3();
+					resetContigencyTable<3>();
 #ifdef PTEST
 					clock_t xc2 = clock();
 #endif
-					OR_3x(idx[2]);
+					OR_x<3>(idx[2]);
 #ifdef PTEST
 					clock_t xc3 = clock();
 #endif
 					// compute beta
-					double b = Gini_3();
+					double b = Gini<3>();
 					c.power = b;
 #ifdef PTEST
 					clock_t xc4 = clock();
@@ -2346,29 +2146,29 @@ public:
 			else
 				e = (dataset->numVariable - (OIDX - 1)) - 1;
 
-			OR_1(idx[0]);
+			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++) 
 			{
-				OR_2(idx[1]);
+				OR<2>(idx[1]);
 				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariable - (OIDX - 2)); idx[2]++)
 				{
-					OR_3(idx[2]);
+					OR<3>(idx[2]);
 					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariable; idx[3]++)
 					{
 						cnt++;
 #ifdef PTEST
 						clock_t xc1 = clock();
 #endif
-						ResetContigencyTable_4();
+						resetContigencyTable<4>();
 #ifdef PTEST
 						clock_t xc2 = clock();
 #endif
-						OR_4x(idx[3]);
+						OR_x<4>(idx[3]);
 #ifdef PTEST
 						clock_t xc3 = clock();
 #endif
 						// compute beta
-						double b = Gini_4();
+						double b = Gini<4>();
 						c.power = b;
 #ifdef PTEST
 						clock_t xc4 = clock();
@@ -2475,14 +2275,14 @@ public:
 				printf("\n");
 				printf("\n Processing %u jobs [%u..%u] in parallel", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
 				
-				time_t begin = time(NULL);
+				auto begin = std::chrono::high_resolution_clock::now();
 				
 				OpenFiles(o);
 				args.WorkloadDivider(o + 1, dataset->numVariable, args.numJobs);
 				MultiThread(o, args.jobsToDo, args.firstJobIdx);
 				CloseFiles(o);
 
-				time_t end = time(NULL);
+				auto end = std::chrono::high_resolution_clock::now();
 				double time_spent = difftime(end, begin);
 				if (time_spent == 0)
 					time_spent = 1;
@@ -2492,7 +2292,7 @@ public:
 				{
 					c += args.jobs[i + args.firstJobIdx].comb;
 				}
-				printf("\n All jobs are compeleted in %10.0f seconds (%10.0f tests per second)", time_spent, c/time_spent);
+				printf("\n All jobs are compeleted in %10.3f seconds (%10.0f tests per second)", time_spent, c/time_spent);
 				printf("\n");
 			}
 		}
@@ -2655,15 +2455,15 @@ void *EpiThread_1(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_1(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2676,15 +2476,15 @@ void *EpiThread_2(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_2(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2697,15 +2497,15 @@ void *EpiThread_3(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_3(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n"); 
 	return NULL;
 }
@@ -2718,15 +2518,15 @@ void *EpiThread_4(void *t)
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
 
-	time_t begin = time(NULL);
+	auto begin = std::chrono::high_resolution_clock::now();
 
 	epiStat->Epi_4(td);
 
-	time_t end = time(NULL);
+	auto end = std::chrono::high_resolution_clock::now();
 	double time_spent = difftime(end, begin);
 	if (time_spent == 0)
 		time_spent = 1;
-	printf("\n Thread %5u processed Job %5u in %10.0f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
+	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
 	printf("\n");
 	return NULL;
 }
@@ -2894,7 +2694,7 @@ void MasterProgram(ARGS args)
 			printf("\n [%5u] Generate and copy script file", i+1);
 			sprintf(computeNodes[i].script, "%s_Script_%u.sh", args.output, i);
 			FILE *runme = fopen(computeNodes[i].script, "w");
-			fprintf(runme, "%s\n", "#!bin/bash");
+			fprintf(runme, "%s\n", "#!/bin/bash");
 			//fprintf(runme, "%s\n", "set -x");
 			fprintf(runme, "cd %s\n", computeNodes[i].dir);
 			fprintf(runme, "%s\n", "git clone https://github.com/aehrc/BitEpi.git");
