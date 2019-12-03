@@ -41,8 +41,10 @@ void pthread_join(pthread_t thread, void **retval)
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+#include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <vector>
 #include "math.h"
 #include "csvparser.h"
 
@@ -1126,7 +1128,7 @@ public:
 class Result
 {
 public:
-	varIdx numVariable;
+	varIdx numVariables;
 	InformationGained *res;
 
 	~Result()
@@ -1141,7 +1143,7 @@ public:
 
 		fprintf(csv, "SNP,SNP_B,PAIR_B,TRIPLET_B,QUADLET_B,SNP_A,PAIR_A,TRIPLET_A,QUADLET_A,PAIR,TRIPLET_1,TRIPLET_2,QUADLET_1,QUADLET_2,QUADLET_3\n");
 
-		for (varIdx i = 0; i < numVariable; i++)
+		for (varIdx i = 0; i < numVariables; i++)
 			res[i].toCSV(csv, i, names);
 
 		fclose(csv);
@@ -1149,15 +1151,15 @@ public:
 
 	void Init(varIdx nv)
 	{
-		numVariable = nv;
-		res = new InformationGained[numVariable];
+		numVariables = nv;
+		res = new InformationGained[numVariables];
 		NULL_CHECK(res);
-		memset(res, 0, numVariable * sizeof(InformationGained));
+		memset(res, 0, numVariables * sizeof(InformationGained));
 	}
 
 	void Max(const Result &o)
 	{
-		for (varIdx i = 0; i < numVariable; i++)
+		for (varIdx i = 0; i < numVariables; i++)
 		{
 			res[i].Max(o.res[i]);
 		}
@@ -1236,9 +1238,9 @@ public:
 
 	uint32 order;
 
-	uint32 *labels;
+	bool *labels;
 
-	sampleIdx numSample;
+	sampleIdx numSamples;
 
 	sampleIdx numCase;
 	sampleIdx numCtrl;
@@ -1255,8 +1257,7 @@ public:
 	word *wordCase[MAX_ORDER]; // the wrod pointer to byteCase
 	word *wordCtrl[MAX_ORDER]; // the wrod pointer to byteCtrl
 
-	uint32 numLine;
-	varIdx numVariable;
+	varIdx numVariables;
 	char **nameVariable;
 
 	double setBeta; // beta of the original set
@@ -1269,7 +1270,7 @@ public:
 	{
 		delete[] labels;
 
-		for (uint32 i = 0; i < numVariable; i++)
+		for (uint32 i = 0; i < numVariables; i++)
 			delete[] nameVariable[i];
 		delete nameVariable;
 
@@ -1302,15 +1303,87 @@ public:
 		return lines;
 	}
 
+	void prepareDataset(std::vector<bool> &sampleClasses,std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
+	{
+		numSamples = sampleClasses.size();
+		if (numSamples >= pow(2, sizeof(sampleIdx) * 8))
+			ERROR("Change sampleIdx type to support the number of samples exist in dataset");
+
+		numVariables = snpLabels.size();
+		numCase = std::count(sampleClasses.begin(),sampleClasses.end(),true);
+		numCtrl = numSamples - numCase;
+		
+		//prepare sample class labels array
+		labels = new bool[numSamples];
+		NULL_CHECK(labels);
+		std::copy(sampleClasses.begin(),sampleClasses.end(),labels);
+		
+		// find number of word and byte per variable in Case and Ctrl
+		numWordCase = numCase / byte_in_word;
+		numWordCtrl = numCtrl / byte_in_word;
+
+		if (numCase % byte_in_word) numWordCase++;
+		if (numCtrl % byte_in_word) numWordCtrl++;
+
+		numByteCase = numWordCase * sizeof(word);
+		numByteCtrl = numWordCtrl * sizeof(word);
+
+		// allocate memory
+		wordCase[0] = new word[numVariables * numWordCase];
+		wordCtrl[0] = new word[numVariables * numWordCtrl];
+
+		NULL_CHECK(wordCase[0]);
+		NULL_CHECK(wordCtrl[0]);
+
+		// convert to byte address
+		byteCase[0] = (uint8_t*)wordCase[0];
+		byteCtrl[0] = (uint8_t*)wordCtrl[0];
+		
+		//prepare the array of char*s for the names of each SNP
+		nameVariable = new char*[numVariables];
+		NULL_CHECK(nameVariable);
+		for(int i = 0; i < snpLabels.size();++i)
+		{
+			nameVariable[i] = new char[snpLabels[i].size() + 1];
+			strcpy(nameVariable[i], snpLabels[i].c_str());
+		}	
+		
+		//prepare the arrays of the variants of each sample
+		for(int SNP = 0; SNP < genotypes.size(); SNP++)
+		{
+			uint32_t idxCase = 0;
+			uint32_t idxCtrl = 0;
+			
+			for (sampleIdx i = 0; i < numSamples; i++)
+			{
+				if (sampleClasses[i])
+				{
+					byteCase[0][CaseIndex(SNP, idxCase)] = genotypes[SNP][i];
+					idxCase++;
+				}
+				else
+				{
+					byteCtrl[0][CtrlIndex(SNP, idxCtrl)] = genotypes[SNP][i];
+					idxCtrl++;
+				}
+			}
+		}
+		
+		std::cout << "There are " << snpLabels.size() << " SNPs" <<std::endl;
+		std::cout << "There are " << sampleClasses.size() << " samples" <<std::endl;
+		std::cout << "There are " << numCase << " Cases" <<std::endl;
+		std::cout << "There are " << numCtrl << " Controls" <<std::endl;
+	}
+
 	// This function read data from file
 	void ReadDataset(const char *fn)
 	{
 		printf("\n loading dataset %s", fn);
 
-		numLine = LineCount(fn);
-		nameVariable = new char*[numLine - 1];
-		NULL_CHECK(nameVariable);
-
+		std::vector<bool> sampleClasses;
+		std::vector<std::string> snpLabels;
+		std::vector<std::vector<uint8_t>> genotypes;
+		
 		CsvParser *csvparser = CsvParser_new(fn, ",", 1);
 		CsvRow *row;
 
@@ -1319,103 +1392,53 @@ public:
 
 		const char **headerFields = CsvParser_getFields(header);
 
-		numSample = CsvParser_getNumFields(header) - 1;
+		uint sampleColumns = CsvParser_getNumFields(header) - 1;
 
-
-		if (numSample >= pow(2, sizeof(sampleIdx) * 8))
-			ERROR("Change sampleIdx type to support the number of samples exist in dataset");
-
-		labels = new uint32[numSample];
-		NULL_CHECK(labels);
-
-		numCase = 0;
-		numCtrl = 0;
-		for (sampleIdx i = 0; i < numSample; i++)
+		for (sampleIdx i = 0; i < sampleColumns; i++)
 		{
-			uint32 read = sscanf(headerFields[i + 1], "%u", &labels[i]);
-			if (read != 1 || labels[i] > 1)
+			uint8_t label;
+			uint32 read = sscanf(headerFields[i + 1], "%u", &label);
+			if (read != 1 || label > 1)
 			{
 				printf("\n Given class label for %uth sample is %s", i+1, headerFields[i + 1]);
 				ERROR("Class lable shold be 0 or 1 for controls and cases");
 			}
-
-			if (labels[i])
-				numCase++;
-			else
-				numCtrl++;
+			sampleClasses.push_back(label==1);
 		}
 
-		// find number of word and byte per variable in Case and Ctrl
-		numWordCase = numCase / byte_in_word;
-		numWordCtrl = numCtrl / byte_in_word;
-
-		if (numCase % byte_in_word) numWordCase++;
-		if (numCtrl % byte_in_word) numWordCtrl++;
-
-		numByteCase = numWordCase * byte_in_word;
-		numByteCtrl = numWordCtrl * byte_in_word;
-
-		// allocate memory
-		wordCase[0] = new word[numLine * numWordCase];
-		wordCtrl[0] = new word[numLine * numWordCtrl];
-
-		NULL_CHECK(wordCase[0]);
-		NULL_CHECK(wordCtrl[0]);
-
-		// convert to byte address
-		byteCase[0] = (uint8*)wordCase[0];
-		byteCtrl[0] = (uint8*)wordCtrl[0];
-
-		numVariable = 0;
+		uint variable = 0;
 		while ((row = CsvParser_getRow(csvparser)))
 		{
 			const char **rowFields = CsvParser_getFields(row);
 
-			if (CsvParser_getNumFields(row) != (numSample + 1))
+			if (CsvParser_getNumFields(row) != (sampleColumns + 1))
 			{
-				printf("\n For %uth SNP there are %u genotypes but there are %u samples in the first line", numVariable+1, CsvParser_getNumFields(row) - 1, numSample);
+				printf("\n For %uth SNP there are %u genotypes but there are %u samples in the first line", variable+1, CsvParser_getNumFields(row) - 1, sampleColumns);
 				ERROR("Number of genotypes does not match the number of samples in the first line");
 			}
-
-			nameVariable[numVariable] = new char[strlen(rowFields[0]) + 1];
-			strcpy(nameVariable[numVariable], rowFields[0]);
-
-			uint32 idxCase = 0;
-			uint32 idxCtrl = 0;
-
-			for (sampleIdx i = 0; i < numSample; i++)
+			snpLabels.push_back(std::string(rowFields[0]));
+			genotypes.push_back(std::vector<uint8_t>());
+			genotypes[variable].reserve(sampleColumns);
+			
+			for (sampleIdx i = 0; i < sampleColumns; i++)
 			{
-				uint32 gt;
+				uint8_t gt;
 				uint32 read = sscanf(rowFields[i + 1], "%u", &gt);
 				if (read != 1 || gt > 2)
 				{
-					printf("\n Given genotype for %uth SNP and %uth Sample is %s", numVariable + 1, i + 1, rowFields[i + 1]);
+					printf("\n Given genotype for %uth SNP and %uth Sample is %s", variable + 1, i + 1, rowFields[i + 1]);
 					ERROR("Genotype shold be 0 or 1 or 2");
 				}
-				if (labels[i])
-				{
-					byteCase[0][CaseIndex(numVariable, idxCase)] = (uint8)gt;
-					idxCase++;
-				}
-				else
-				{
-					byteCtrl[0][CtrlIndex(numVariable, idxCtrl)] = (uint8)gt;
-					idxCtrl++;
-				}
+				genotypes[variable].push_back(gt);
 			}
 			CsvParser_destroy_row(row);
 
-			numVariable++;
+			variable++;
 		}
 
 		CsvParser_destroy(csvparser);
 
-		printf("\n There are %8u lines    in %s", numLine, fn);
-		printf("\n There are %8u SNPs     in %s", numVariable, fn);
-		printf("\n There are %8u samples  in %s", numSample, fn);
-		printf("\n There are %8u Cases    in %s", numCase, fn);
-		printf("\n There are %8u Controls in %s", numCtrl, fn);
-
+		prepareDataset(sampleClasses,snpLabels,genotypes);
 		return;
 	}
 
@@ -1429,20 +1452,20 @@ public:
 
 		fprintf(f, "Var\\Class");
 
-		for (uint32 i = 0; i < numSample; i++)
+		for (uint32 i = 0; i < numSamples; i++)
 		{
-			fprintf(f, ",%u", labels[i]);
+			fprintf(f, ",%u", labels[i]?1:0);
 		}
 		fprintf(f, "\n");
 
-		for (uint32 j = 0; j < numVariable; j++)
+		for (uint32 j = 0; j < numVariables; j++)
 		{
 			fprintf(f, "%s", nameVariable[j]);
 
 			uint32 idxCase = 0;
 			uint32 idxCtrl = 0;
 
-			for (uint32 i = 0; i < numSample; i++)
+			for (uint32 i = 0; i < numSamples; i++)
 			{
 				if (labels[i])
 				{
@@ -1465,9 +1488,9 @@ public:
 	{
 		numCase = 0;
 		numCtrl = 0;
-		for (sampleIdx i = 0; i < numSample; i++)
+		for (sampleIdx i = 0; i < numSamples; i++)
 			if (labels[i]) numCase++; else numCtrl++;
-		setBeta = P2((double)numCase / numSample) + P2((double)numCtrl / numSample);
+		setBeta = P2((double)numCase / numSamples) + P2((double)numCtrl / numSamples);
 		printf("\n Purity of the whole dataset (B_0) is %f (baseline for Beta)", setBeta);
 	}
 
@@ -1476,8 +1499,8 @@ public:
 		for (uint32 d = 1; d < order; d++)
 		{
 			// allocate memory
-			wordCase[d] = new word[numVariable * numWordCase];
-			wordCtrl[d] = new word[numVariable * numWordCtrl];
+			wordCase[d] = new word[numVariables * numWordCase];
+			wordCtrl[d] = new word[numVariables * numWordCtrl];
 			NULL_CHECK(wordCase[d]);
 			NULL_CHECK(wordCtrl[d]);
 			// convert to byte address
@@ -1485,9 +1508,9 @@ public:
 			byteCtrl[d] = (uint8*)wordCtrl[d];
 
 			// shoft and copy
-			for (uint32 i = 0; i < (numVariable * numWordCase); i++)
+			for (uint32 i = 0; i < (numVariables * numWordCase); i++)
 				wordCase[d][i] = wordCase[d - 1][i] << 2;
-			for (uint32 i = 0; i < (numVariable * numWordCtrl); i++)
+			for (uint32 i = 0; i < (numVariables * numWordCtrl); i++)
 				wordCtrl[d][i] = wordCtrl[d - 1][i] << 2;
 
 			printf("\n Shift dataset by %u bits compeleted", d * 2);
@@ -1501,7 +1524,7 @@ public:
 		{
 			results = new Result[args.numThreads]; // number of threads
 			for (uint32 i = 0; i < args.numThreads; i++)
-				results[i].Init(numVariable);
+				results[i].Init(numVariables);
 		}
 		ComputeSetBeta();
 		Shift();
@@ -1844,7 +1867,7 @@ public:
 			if (sum)
 				beta += (P2(nCase) + P2(nCtrl)) / sum;
 		}
-		return beta/dataset->numSample;
+		return beta/dataset->numSamples;
 	}
 
 	void Epi_1(ThreadData *td)
@@ -1948,7 +1971,7 @@ public:
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
 			OR<1>(idx[0]);
-			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariable - (OIDX - 1)); idx[1]++)
+			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariables - (OIDX - 1)); idx[1]++)
 			{
 				cnt++;
 #ifdef PTEST
@@ -2045,13 +2068,13 @@ public:
 			if (idx[0] == args.jobs[jobIdx].e[0])
 				e = args.jobs[jobIdx].e[1];
 			else
-				e = (dataset->numVariable - (OIDX - 1)) - 1;
+				e = (dataset->numVariables - (OIDX - 1)) - 1;
 			
 			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++)
 			{
 				OR<2>(idx[1]);
-				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariable; idx[2]++)
+				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariables; idx[2]++)
 				{
 					cnt++;
 #ifdef PTEST
@@ -2150,16 +2173,16 @@ public:
 			if (idx[0] == args.jobs[jobIdx].e[0])
 				e = args.jobs[jobIdx].e[1];
 			else
-				e = (dataset->numVariable - (OIDX - 1)) - 1;
+				e = (dataset->numVariables - (OIDX - 1)) - 1;
 
 			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++) 
 			{
 				OR<2>(idx[1]);
-				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariable - (OIDX - 2)); idx[2]++)
+				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariables - (OIDX - 2)); idx[2]++)
 				{
 					OR<3>(idx[2]);
-					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariable; idx[3]++)
+					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariables; idx[3]++)
 					{
 						cnt++;
 #ifdef PTEST
@@ -2270,7 +2293,7 @@ public:
 
 	void Run()
 	{
-		AllocateBeta(dataset->numVariable, args);
+		AllocateBeta(dataset->numVariables, args);
 
 		for (int o = 0; o < MAX_ORDER; o++)
 		{
@@ -2284,7 +2307,7 @@ public:
 				auto begin = std::chrono::high_resolution_clock::now();
 				
 				OpenFiles(o);
-				args.WorkloadDivider(o + 1, dataset->numVariable, args.numJobs);
+				args.WorkloadDivider(o + 1, dataset->numVariables, args.numJobs);
 				MultiThread(o, args.jobsToDo, args.firstJobIdx);
 				CloseFiles(o);
 
@@ -2380,13 +2403,13 @@ public:
 			delete[]fn;
 		}
 
-		FreeBeta(dataset->numVariable, &args);
+		FreeBeta(dataset->numVariables, &args);
 		dataset->FreeMemory(&args);
 	}
 
 	void RunCluster() // to be implemented
 	{
-		AllocateBeta(dataset->numVariable, args);
+		AllocateBeta(dataset->numVariables, args);
 
 		if (args.clusterAlpha)
 		{
@@ -2400,7 +2423,7 @@ public:
 
 			time_t begin = time(NULL);
 
-			args.WorkloadDivider(o + 1, dataset->numVariable, args.numThreads);
+			args.WorkloadDivider(o + 1, dataset->numVariables, args.numThreads);
 			MultiThread(o, args.numThreads, 0);
 
 			time_t end = time(NULL);
@@ -2431,7 +2454,7 @@ public:
 		time_t begin = time(NULL);
 
 		OpenFiles(o);
-		args.WorkloadDivider(o + 1, dataset->numVariable, args.numJobs);
+		args.WorkloadDivider(o + 1, dataset->numVariables, args.numJobs);
 		MultiThread(o, args.jobsToDo, args.firstJobIdx);
 		CloseFiles(o);
 
@@ -2448,7 +2471,7 @@ public:
 		printf("\n All jobs are compeleted in %10.0f seconds (%10.0f tests per second)", time_spent, c / time_spent);
 		printf("\n");
 
-		FreeBeta(dataset->numVariable, &args);
+		FreeBeta(dataset->numVariables, &args);
 		dataset->FreeMemory(&args);
 	}
 };
