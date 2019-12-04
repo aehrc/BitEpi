@@ -44,6 +44,7 @@ void pthread_join(pthread_t thread, void **retval)
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include "math.h"
 #include "csvparser.h"
@@ -174,6 +175,7 @@ struct ARGS
 	char input[1024];
 	char output[1024];
 	bool inputGiven;
+	bool readBfile;
 	// In the local mode (default) the program will parallelize the outter loop over all 'numThreads' and run all of them in parallele.
 	// Basically in the default mode the numJob is set to numThreads. 
 	// In the cloud/cluster mode (-c) the program will parallelize the outter loop over all 'numJobs' and run 'numThreads' jobs in parallele.
@@ -668,6 +670,13 @@ struct ARGS
 				continue;
 			}
 
+			// read bfile flag
+			if (!strcmp(argv[i], "-bfile"))
+			{
+				readBfile = true;
+				continue;
+			}
+			
 			// read best flag
 			if (!strcmp(argv[i], "-best"))
 			{
@@ -1302,7 +1311,12 @@ public:
 
 		return lines;
 	}
-
+	/**
+	*sampleClasses contains the class for each sample, false for control, true for case.
+	*snpLabels contains the string representing each snp label
+	*genoytypes contains a vector for each snp which contains the genotype each sample has for that snp.
+	*	0 is homozygous for reference, 1 is heterozygous, and 2 is homozygous for the variant
+	*/
 	void prepareDataset(std::vector<bool> &sampleClasses,std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
 	{
 		numSamples = sampleClasses.size();
@@ -1375,8 +1389,93 @@ public:
 		std::cout << "There are " << numCtrl << " Controls" <<std::endl;
 	}
 
+	void ReadDatasetBfile(const char *fn)
+	{
+		std::string filename = std::string(fn);
+		//if the file ends with .bed strip it
+		if(filename.size()>4&&filename.compare(filename.size()-4,4,".bed")==0)
+			filename.erase(filename.end()-4, filename.end());
+		
+		std::cout << "loading dataset " << filename << ".bed, "
+		<< filename << ".bim, " << filename << ".fam" << std::endl;
+		
+		std::vector<bool> sampleClasses;
+		std::vector<std::string> snpLabels;
+		std::vector<std::vector<uint8_t>> genotypes;
+		//get variant labels
+		std::ifstream variantFile(filename+".bim");
+		if(!variantFile.is_open())
+			ERROR("could not open associated .bim file");
+		std::string line;
+		while (std::getline(variantFile, line))
+		{
+			//find delimeter
+			char delim = ' ';
+			if(std::count(line.begin(),line.end(),'\t')==5)
+				delim = '\t';
+			line = line.substr(line.find(delim)+1);//remove first field			
+			snpLabels.push_back(line.substr(0,line.find(delim)));
+		}
+		variantFile.close();
+
+		//get sample classes		
+		std::ifstream sampleFile(filename+".fam");
+		if(!sampleFile.is_open())
+			ERROR("could not open associated .fam file");
+		while (std::getline(sampleFile, line))
+		{
+			std::string classLabel = line.substr(line.find_last_not_of(" \v\f\t\r\n"),1);
+			if(classLabel=="1")
+				sampleClasses.push_back(false);
+			else if (classLabel=="2")
+				sampleClasses.push_back(true);
+			else
+				ERROR("Phenotype type value not control (1) or case (2) in .fam file")
+		}
+		sampleFile.close();
+
+		//get sample variants
+		std::ifstream bedFile(filename+".bed",std::ios::binary);
+		if(!bedFile.is_open())
+			ERROR("could not open associated .bed file");
+		uint32_t chunkSize = sampleClasses.size()/4;
+		if(sampleClasses.size()%4!=0)
+			chunkSize++;
+		char * buffer = new char[chunkSize];
+		genotypes.reserve(snpLabels.size());
+		//read and discard 3 magic bytes at the start of the file
+		bedFile.read(buffer,3);
+		for(int i = 0;i < snpLabels.size();++i)
+		{
+			bedFile.read(buffer,chunkSize);
+			if(!bedFile.good())
+				ERROR("bed file does not contain enough bytes")
+			genotypes.push_back(std::vector<uint8_t>());
+			std::vector<uint8_t> &gs = genotypes.back();
+			gs.reserve(chunkSize*4);
+			for(int j = 0; j<chunkSize;++j)
+			{
+				//genotypes stored as two bit value 
+				//00 homozygous minor allele recorded as 2
+				//01 missing value recorded as homozygous major allele recorded as 0
+				//10 heterogenous recorded as 1
+				//11 homozygous major allele recorded as 0
+				static const uint8_t convert[4] = {2,0,1,0};
+				gs.push_back(convert[buffer[j]&3]);
+				gs.push_back(convert[(buffer[j]>>2)&3]);
+				gs.push_back(convert[(buffer[j]>>4)&3]);
+				gs.push_back(convert[(buffer[j]>>6)&3]);
+			}
+			//discard the last samples that were created to pad out the 8 bits
+			gs.resize(sampleClasses.size());
+		}
+		
+		prepareDataset(sampleClasses,snpLabels,genotypes);
+		return;
+	}
+
 	// This function read data from file
-	void ReadDataset(const char *fn)
+	void ReadDatasetCSV(const char *fn)
 	{
 		printf("\n loading dataset %s", fn);
 
@@ -1397,7 +1496,7 @@ public:
 		for (sampleIdx i = 0; i < sampleColumns; i++)
 		{
 			uint8_t label;
-			uint32 read = sscanf(headerFields[i + 1], "%u", &label);
+			uint32 read = sscanf(headerFields[i + 1], "%2u", &label);
 			if (read != 1 || label > 1)
 			{
 				printf("\n Given class label for %uth sample is %s", i+1, headerFields[i + 1]);
@@ -1423,7 +1522,7 @@ public:
 			for (sampleIdx i = 0; i < sampleColumns; i++)
 			{
 				uint8_t gt;
-				uint32 read = sscanf(rowFields[i + 1], "%u", &gt);
+				uint32 read = sscanf(rowFields[i + 1], "%2u", &gt);
 				if (read != 1 || gt > 2)
 				{
 					printf("\n Given genotype for %uth SNP and %uth Sample is %s", variable + 1, i + 1, rowFields[i + 1]);
@@ -2850,7 +2949,10 @@ int main(int argc, char *argv[])
 #endif
 
 	Dataset dataset;
-	dataset.ReadDataset(args.input);
+	if(args.readBfile)
+		dataset.ReadDatasetBfile(args.input);
+	else
+		dataset.ReadDatasetCSV(args.input);
 	dataset.Init(args);
 
 	EpiStat epiStat;
