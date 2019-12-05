@@ -79,8 +79,9 @@ BitEpi Python Interface is implemented in a separate GitHub page ([bitepi-python
 |----------------|-------------------------------------------|
 | -i [str]       | Path to input CSV file                    |
 | -o [str]       | Output prefix                             |
-| -sort          | If present sorts the output               |
-| -best          | find the best interactions for each SNP   |
+| -bfile         | Read input file as PLINK 1.9 .bed format  |
+| -sort          | Sort the output                           |
+| -best          | Find the best interactions for each SNP   |
 | -t [int]       | Number of threads                         |
 | -b1 [thr]      | Perform 1-SNP Beta  analysis              |
 | -b2 [thr]      | Perform 2-SNP Beta  analysis              |
@@ -99,7 +100,7 @@ BitEpi Python Interface is implemented in a separate GitHub page ([bitepi-python
 - thr is optional. If you don't pass a thr the program computes the metric but it does not report anything (performance testing).
 - If all interactions should be reported set thr to 0.
 
-**Input Format**
+**CSV Input Format**
 
 - The first row includes labels: 1 and 0 for cases and controls respectively
 - The first column includes SNP unique ids. BitEpi does not check the uniqueness.
