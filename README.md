@@ -77,7 +77,10 @@ BitEpi Python Interface is implemented in a separate GitHub page ([bitepi-python
 
 | Argument       | Description                               |
 |----------------|-------------------------------------------|
-| -i [str]       | Path to input CSV file                    |
+| -i [str]       | Path to input file (CSV or plink bfile).  |
+|                | Default is CSV (see -bfile)               |
+| -bfile         | If present, -i argument is considered as  |
+|                | plink bfile prefix (*.bed, *.bim, *.fam)  |
 | -o [str]       | Output prefix                             |
 | -bfile         | Read input file as PLINK 1.9 .bed format  |
 | -sort          | Sort the output                           |
