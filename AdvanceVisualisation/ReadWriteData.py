@@ -76,12 +76,25 @@ def read_data(input_file):
             cell_value = df.iat[index, i + 1]
             # Add a cell value to the new DataFrame
             node_df = node_df.append(pd.DataFrame([cell_value], columns=["Node"]), ignore_index=True)
+            if(i+1) >= 2:
+                new_cell_value = ''
+                if (i + 1) == 2:
+                    SNP_A_cell_value = df.iat[index, i]
+                    new_cell_value = str(SNP_A_cell_value) + str(cell_value)
 
-            # If SNPs are 2
-            if int_order == 2 and (i + 1) == 2:
-                prev_cell_value = df.iat[index, i]
-                new_cell_value = str(cell_value) + str(prev_cell_value)
-                # Add a cell value to the new DataFrame
+                elif (i + 1) == 3:
+                    print("gjcvjk")
+                    SNP_B_cell_value = df.iat[index, i]
+                    SNP_A_cell_value = df.iat[index, i - 1]
+                    new_cell_value = str(SNP_A_cell_value) + str(SNP_B_cell_value) + str(cell_value)
+
+                elif (i + 1) == 4:
+                    SNP_C_cell_value = df.iat[index, i]
+                    SNP_B_cell_value = df.iat[index, i - 1]
+                    SNP_A_cell_value = df.iat[index, i - 2]
+                    new_cell_value = str(SNP_A_cell_value) + str(SNP_B_cell_value) + str(SNP_C_cell_value) + str(cell_value)
+
+                    # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame([new_cell_value], columns=["Node"]), ignore_index=True)
 
     print(node_df)
