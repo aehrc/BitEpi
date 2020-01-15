@@ -62,14 +62,14 @@ def read_data(input_file):
     file_path = os.path.join('../sampleData/', input_file)
     df = pd.read_csv(file_path)
     print(df)
-    # A dataframe with all the nodes: individual -> quadruple
-    # A dataframe with the interation node (concat of all the names of the gene) and SNPs
+    # A DataFrame with all the nodes: individual -> quadruple
+    # A DataFrame with the interaction node (concat of all the names of the gene) and SNPs
     node_df = pd.DataFrame(columns=["Node"])
     int_order = int(order)
 
     # Loop through each row
     # Get the cell values of each column of each row and concat the values
-    # Add the values to the new dataframe
+    # Add the values to the new DataFrame
     for index, row in df.iterrows():
         for i in range(int_order):
             # Add all the single ones
