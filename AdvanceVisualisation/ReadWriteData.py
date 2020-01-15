@@ -7,6 +7,7 @@ input_type = ''
 order = ''
 
 
+# Method to validate the input file
 def validate_input_file(input_file):
     # prefix = ''
     global order
@@ -55,14 +56,8 @@ def validate_input_file(input_file):
     return valid
 
 
-# Method to read in data from a cs file and store in a DataFrame
-def read_data(input_file):
-    data_read = False
-
-    file_path = os.path.join('../sampleData/', input_file)
-    df = pd.read_csv(file_path)
-    print(df)
-    # A DataFrame with all the nodes: individual -> quadruple
+# Method to create the Node DataFrame
+def create_node_df(df):
     # A DataFrame with the interaction node (concat of all the names of the gene) and SNPs
     node_df = pd.DataFrame(columns=["Node"])
     int_order = int(order)
@@ -72,11 +67,11 @@ def read_data(input_file):
     # Add the values to the new DataFrame
     for index, row in df.iterrows():
         for i in range(int_order):
-            # Add all the single ones
+            # Add the single SNPs at the specific position
             cell_value = df.iat[index, i + 1]
             # Add a cell value to the new DataFrame
             node_df = node_df.append(pd.DataFrame([cell_value], columns=["Node"]), ignore_index=True)
-            if(i+1) >= 2:
+            if (i + 1) >= 2:
                 new_cell_value = ''
                 if (i + 1) == 2:
                     SNP_A_cell_value = df.iat[index, i]
@@ -91,12 +86,46 @@ def read_data(input_file):
                     SNP_C_cell_value = df.iat[index, i]
                     SNP_B_cell_value = df.iat[index, i - 1]
                     SNP_A_cell_value = df.iat[index, i - 2]
-                    new_cell_value = str(SNP_A_cell_value) + str(SNP_B_cell_value) + str(SNP_C_cell_value) + str(cell_value)
+                    new_cell_value = str(SNP_A_cell_value) + str(SNP_B_cell_value) + str(SNP_C_cell_value) + str(
+                        cell_value)
 
                     # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame([new_cell_value], columns=["Node"]), ignore_index=True)
 
-    print(node_df)
+    # print(node_df)
+    return node_df
+
+
+# Method to create the edge DataFrame
+def create_edge_df(df):
+    # A DataFrame with all the nodes: individual -> quadruple
+    edge_df = pd.DataFrame(columns=["Interaction Node"])
+
+    # Interaction node is a concatenation of the SNPs
+    # All the concatenated SNPs are connected to it
+    # Later on: Check if the SNP is from Alpha and Beta
+    # Check if there are any duplicates i.e same SNPs but different ordering
+
+    return edge_df
+
+
+# Method to read in data from a cs file and store in a DataFrame
+def read_data(input_file):
+    data_read = False
+
+    file_path = os.path.join('../sampleData/', input_file)
+    df = pd.read_csv(file_path)
+    print(df)
+
+    # Get the node_df in order to write to csv
+    node_df = create_node_df(df)
+
+    # Get the edge_df in order to write to csv
+    edge_df = create_edge_df(df)
+
+    # Each time a csv file is read and the dfs are created
+    # Append to the existing csv files
+
     return data_read
 
 
