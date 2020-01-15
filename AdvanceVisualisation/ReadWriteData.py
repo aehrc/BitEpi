@@ -83,7 +83,6 @@ def read_data(input_file):
                     new_cell_value = str(SNP_A_cell_value) + str(cell_value)
 
                 elif (i + 1) == 3:
-                    print("gjcvjk")
                     SNP_B_cell_value = df.iat[index, i]
                     SNP_A_cell_value = df.iat[index, i - 1]
                     new_cell_value = str(SNP_A_cell_value) + str(SNP_B_cell_value) + str(cell_value)
