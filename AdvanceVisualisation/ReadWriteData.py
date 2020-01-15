@@ -3,14 +3,16 @@ import os
 
 import pandas as pd
 
+input_type = ''
+order = ''
+
 
 def validate_input_file(input_file):
-    # If need to make the sub strings globally accessible
     # prefix = ''
-    # input_type = ''
+    global order
+    global input_type
     first_job_index = ''
     last_job_index = ''
-    order = ''
     extension = ''
     valid = True
     # Split the file name and verify each substring
@@ -59,8 +61,30 @@ def read_data(input_file):
 
     file_path = os.path.join('../sampleData/', input_file)
     df = pd.read_csv(file_path)
-
     print(df)
+    # A dataframe with all the nodes: individual -> quadruple
+    # A dataframe with the interation node (concat of all the names of the gene) and SNPs
+    node_df = pd.DataFrame(columns=["Node"])
+    int_order = int(order)
+
+    # Loop through each row
+    # Get the cell values of each column of each row and concat the values
+    # Add the values to the new dataframe
+    for index, row in df.iterrows():
+        for i in range(int_order):
+            # Add all the single ones
+            cell_value = df.iat[index, i + 1]
+            # Add a cell value to the new DataFrame
+            node_df = node_df.append(pd.DataFrame([cell_value], columns=["Node"]), ignore_index=True)
+
+            # If SNPs are 2
+            if int_order == 2 and (i + 1) == 2:
+                prev_cell_value = df.iat[index, i]
+                new_cell_value = str(cell_value) + str(prev_cell_value)
+                # Add a cell value to the new DataFrame
+                node_df = node_df.append(pd.DataFrame([new_cell_value], columns=["Node"]), ignore_index=True)
+
+    print(node_df)
     return data_read
 
 
