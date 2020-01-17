@@ -97,7 +97,7 @@ def create_node_df(df, int_order):
 # Method to create the edge DataFrame
 def create_edge_df(df, int_order):
     # A DataFrame with all the nodes: individual SNP -> interaction node
-    edge_df = pd.DataFrame(columns=["Edge", "Node"])
+    edge_df = pd.DataFrame(columns=["Target", "Source"])
 
     for index, row in df.iterrows():
         for i in range(int_order):
@@ -149,7 +149,7 @@ def check_node_duplicates(node_df, existing_df):
 def check_edge_duplicates(edge_df, existing_df):
     # Create a new edge DataFrame with the non-duplicated nodes
     # TODO complete the rest of this
-    new_edge_df = pd.DataFrame(columns=["Edge", "Node"])
+    new_edge_df = pd.DataFrame(columns=["Target", "Source"])
     return new_edge_df
 
 
