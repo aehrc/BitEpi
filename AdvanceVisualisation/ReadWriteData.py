@@ -145,34 +145,59 @@ def create_edge_df(df, int_order):
 # Method to write data in the correct format to csv files
 def write_data(node_df, edge_df):
     data_written = True
+    node_file_name = 'nodes.csv'
+    edge_file_name = 'edges.csv'
+    node_file_path = os.path.join('./OutputData/', node_file_name)
+    edge_file_path = os.path.join('./OutputData/', edge_file_name)
+
+    # Check if files exist
+    # Create a new file if there is no existing one
+    # If exists then append to the existing file
+    if not os.path.isfile(node_file_path):
+        print("No existing node file found. Creating a new file nodes.csv")
+        node_df.to_csv(node_file_path, encoding='utf-8', index=False)
+    else:
+        print("Existing node file found. Appending to node.csv")
+        node_df.to_csv(node_file_path, mode='a', header=False, encoding='utf-8', index=False)
+
+    if not os.path.isfile(edge_file_path):
+        print("No existing node file found. Creating a new file edges.csv")
+        edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+    else:
+        print("Existing edges file found. Appending to edges.csv")
+        edge_df.to_csv(edge_file_path, mode='a', header=False, encoding='utf-8', index=False)
 
     return data_written
 
 
 # Method to read in data and write data from and to a csv file
 def read_write_data(input_file):
-    data_done = True
+    read_write_done = True
 
     file_path = os.path.join('../sampleData/', input_file)
     df = pd.read_csv(file_path)
     int_order = int(order)
 
     if df.empty:
-        data_done = False
+        read_write_done = False
     else:
-        print(df)
+        # print(df)
         # Get the node_df in order to write to csv
         node_df = create_node_df(df, int_order)
-
         # Get the edge_df in order to write to csv
         edge_df = create_edge_df(df, int_order)
 
-        # TODO Append to the existing output csv files
-        data_written = write_data(node_df, edge_df)
+        if node_df.empty or edge_df.empty:
+            read_write_done = False
+            print("Error the newly created DataFrames are empty.")
+        else:
+            data_written = write_data(node_df, edge_df)
 
-        if not data_written:
-            data_done = False
-    return data_done
+            if not data_written:
+                read_write_done = False
+                print("Error could not write data to the csv file/s!")
+
+    return read_write_done
 
 
 def main():
@@ -184,8 +209,8 @@ def main():
     valid = validate_input_file(input_file)
     if valid:
         print("The input file, {}, has been successfully validated.".format(input_file))
-        data_done = read_write_data(input_file)
-        if data_done:
+        read_write_done = read_write_data(input_file)
+        if read_write_done:
             print(
                 "The input file, {}, has been successfully loaded and the output file has been created successfully.".format(
                     input_file))
