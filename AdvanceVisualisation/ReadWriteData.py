@@ -1,6 +1,5 @@
 import argparse
 import os
-
 import pandas as pd
 
 input_type = ''
@@ -107,10 +106,6 @@ def create_edge_df(df, int_order):
 
             # If order is one
             # TODO Check if the SNP is from Alpha and Beta
-            # Add the single SNP as a Node to the new DataFrame
-            if int_order == 1:
-                # Add the edge_value as the Node as there are no interactions with the edge
-                edge_df = edge_df.append(pd.DataFrame([edge_value], columns=["Node"]), ignore_index=True)
             # If order is greater than 1
             if int_order >= 2:
                 node = ''
@@ -158,8 +153,8 @@ def check_edge_duplicates(edge_df, existing_df):
 
 
 # Method to write data in the correct format to csv files
-def write_data(node_df, edge_df):
-    data_written = True
+def write_data_to_csv(node_df, edge_df):
+    data_written_to_csv = True
     node_file_name = 'nodes.csv'
     edge_file_name = 'edges.csv'
     node_file_path = os.path.join('./OutputData/', node_file_name)
@@ -190,7 +185,7 @@ def write_data(node_df, edge_df):
         new_edge_df = check_edge_duplicates(edge_df, existing_df)
         new_edge_df.to_csv(edge_file_path, mode='a', header=False, encoding='utf-8', index=False)
 
-    return data_written
+    return data_written_to_csv
 
 
 # Method to read in data and write data from and to a csv file
@@ -208,13 +203,15 @@ def read_write_data(input_file):
         # Get the node_df in order to write to csv
         node_df = create_node_df(df, int_order)
         # Get the edge_df in order to write to csv
-        edge_df = create_edge_df(df, int_order)
+        # Ignore order 1 as the SNPs are already added to the nodes
+        if int_order != 1:
+            edge_df = create_edge_df(df, int_order)
 
         if node_df.empty or edge_df.empty:
             read_write_done = False
             print("Error the newly created DataFrames are empty.")
         else:
-            data_written = write_data(node_df, edge_df)
+            data_written = write_data_to_csv(node_df, edge_df)
 
             if not data_written:
                 read_write_done = False
