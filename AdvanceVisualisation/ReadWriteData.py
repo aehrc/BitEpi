@@ -100,7 +100,6 @@ def create_edge_df(df, int_order):
     # A DataFrame with all the nodes: individual SNP -> interaction node
     edge_df = pd.DataFrame(columns=["Edge", "Node"])
 
-    # TODO Check if there is an existing file i.e check existing DataFrame
     for index, row in df.iterrows():
         for i in range(int_order):
             # Get the cell value
@@ -108,7 +107,7 @@ def create_edge_df(df, int_order):
 
             # If order is one
             # TODO Check if the SNP is from Alpha and Beta
-            # TODO Check if there are any duplicates i.e same SNPs but different ordering            # Add the single SNP as a Node to the new DataFrame
+            # Add the single SNP as a Node to the new DataFrame
             if int_order == 1:
                 # Add the edge_value as the Node as there are no interactions with the edge
                 edge_df = edge_df.append(pd.DataFrame([edge_value], columns=["Node"]), ignore_index=True)
@@ -138,8 +137,24 @@ def create_edge_df(df, int_order):
                 edge_df = edge_df.append(pd.DataFrame([[edge_value, node]], columns=["Edge", "Node"]),
                                          ignore_index=True)
 
-    print(edge_df)
+    # print(edge_df)
     return edge_df
+
+
+# Method to check for duplicate nodes in the existing file and new DataFrame
+def check_node_duplicates(node_df, existing_df):
+    # Create a new node DataFrame with the non-duplicated nodes
+    # TODO complete the rest of this
+    new_node_df = pd.DataFrame(columns=["Node"])
+    return new_node_df
+
+
+# Method to check edge duplicates
+def check_edge_duplicates(edge_df, existing_df):
+    # Create a new edge DataFrame with the non-duplicated nodes
+    # TODO complete the rest of this
+    new_edge_df = pd.DataFrame(columns=["Edge", "Node"])
+    return new_edge_df
 
 
 # Method to write data in the correct format to csv files
@@ -158,14 +173,22 @@ def write_data(node_df, edge_df):
         node_df.to_csv(node_file_path, encoding='utf-8', index=False)
     else:
         print("Existing node file found. Appending to node.csv")
-        node_df.to_csv(node_file_path, mode='a', header=False, encoding='utf-8', index=False)
+        # Read in the existing DataFrame and check for duplicates
+        existing_df = pd.read_csv(node_file_path)
+        # Get a new DataFrame without any duplicated nodes
+        new_node_df = check_node_duplicates(node_df, existing_df)
+        new_node_df.to_csv(node_file_path, mode='a', header=False, encoding='utf-8', index=False)
 
     if not os.path.isfile(edge_file_path):
         print("No existing node file found. Creating a new file edges.csv")
         edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
     else:
         print("Existing edges file found. Appending to edges.csv")
-        edge_df.to_csv(edge_file_path, mode='a', header=False, encoding='utf-8', index=False)
+        # Read in the existing DataFrame and check for duplicates
+        existing_df = pd.read_csv(edge_file_path)
+        # Get a new DataFrame without any duplicated edges
+        new_edge_df = check_edge_duplicates(edge_df, existing_df)
+        new_edge_df.to_csv(edge_file_path, mode='a', header=False, encoding='utf-8', index=False)
 
     return data_written
 
