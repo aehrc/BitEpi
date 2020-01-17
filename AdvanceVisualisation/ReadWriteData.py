@@ -142,7 +142,7 @@ def create_edge_df(df, int_order):
 
                 # Add the new edge-node pair to the DataFrame
                 edge_df = edge_df.append(pd.DataFrame([[edge_value, node]],
-                                                      columns=["Edge", "Node"]),
+                                                      columns=["Target", "Source"]),
                                          ignore_index=True)
 
     # print(edge_df)
@@ -164,10 +164,7 @@ def check_edge_duplicates(edge_df, existing_df):
     # TODO add more duplication checks
     temp_edge_df = pd.concat([edge_df, existing_df])
     # Remove duplicates and keep only the first occurrence of the node
-    new_edge_df = temp_edge_df.drop_duplicates(keep='first')
-    return new_edge_df
-
-    new_edge_df = pd.DataFrame(columns=["Target", "Source"])
+    new_edge_df = temp_edge_df.drop_duplicates(subset=['Target', 'Source'], keep='first')
     return new_edge_df
 
 
@@ -191,8 +188,8 @@ def write_data_to_csv(node_df, edge_df, int_order):
         existing_df = pd.read_csv(node_file_path)
         # Get a new DataFrame without any duplicated nodes
         new_node_df = check_node_duplicates(node_df, existing_df)
-        new_node_df.to_csv(node_file_path, mode='a', header=False,
-                           encoding='utf-8', index=False)
+        os.remove(node_file_path)
+        new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
 
     if int_order != 1:
         if not os.path.isfile(edge_file_path):
@@ -204,8 +201,8 @@ def write_data_to_csv(node_df, edge_df, int_order):
             existing_df = pd.read_csv(edge_file_path)
             # Get a new DataFrame without any duplicated edges
             new_edge_df = check_edge_duplicates(edge_df, existing_df)
-            new_edge_df.to_csv(edge_file_path, mode='a', header=False,
-                               encoding='utf-8', index=False)
+            os.remove(edge_file_path)
+            new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
 
     return data_written_to_csv
 
