@@ -161,7 +161,6 @@ def check_node_duplicates(node_df, existing_df):
 # Method to check edge duplicates
 def check_edge_duplicates(edge_df, existing_df):
     # Create a new edge DataFrame with the non-duplicated nodes
-    # TODO add more duplication checks
     temp_edge_df = pd.concat([edge_df, existing_df])
     # Remove duplicates and keep only the first occurrence of the node
     new_edge_df = temp_edge_df.drop_duplicates(subset=['Target', 'Source'], keep='first')
