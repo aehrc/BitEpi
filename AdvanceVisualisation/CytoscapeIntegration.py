@@ -16,13 +16,25 @@ class CytoscapeIntegration:
         self.node_df = node_df
         self.edge_df = edge_df
 
-    # Create client
-    cy = CyRestClient()
-    # Clear current session
-    cy.session.delete()
-
     def cytoscape_successful(self):
-        print(self.node_df)
-        print(self.edge_df)
+        cytoscape_successful = True
 
-        return True
+        # Create client
+        cy = CyRestClient(ip='127.0.0.1', port=1234)
+        # Clear current session
+        cy.session.delete()
+        # Create a network from edge_df
+        self.edge_df.head()
+        source = self.edge_df.columns[1]
+        target = self.edge_df.columns[0]
+        interaction = 'Interaction identifier(s)'
+        title = 'Test network 0.1'
+
+        edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source,
+                                                      target_col=target, interaction_col=interaction, name=title)
+
+        cy.layout.apply(network=edge_graph)
+        cy.layout.fit(network=edge_graph)
+        Image(edge_graph.get_png(height=400))
+
+        return cytoscape_successful

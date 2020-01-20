@@ -176,7 +176,7 @@ class ReadWriteData:
             # Read in the existing DataFrame and check for duplicates
             existing_df = pd.read_csv(node_file_path)
             # Get a new DataFrame without any duplicated nodes
-            new_node_df = ReadWriteData.check_node_duplicates(node_df, existing_df)
+            new_node_df = self.check_node_duplicates(node_df, existing_df)
             os.remove(node_file_path)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
 
@@ -189,7 +189,7 @@ class ReadWriteData:
                 # Read in the existing DataFrame and check for duplicates
                 existing_df = pd.read_csv(edge_file_path)
                 # Get a new DataFrame without any duplicated edges
-                new_edge_df = ReadWriteData.check_edge_duplicates(edge_df, existing_df)
+                new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
                 os.remove(edge_file_path)
                 new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
 
