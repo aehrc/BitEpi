@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 
 
 class ReadWriteData:
@@ -10,7 +10,6 @@ class ReadWriteData:
         self.input_file = input_file
 
     # Method to validate the input file
-    @staticmethod
     def validate_input_file(self):
         # prefix = ''
         global order
@@ -20,7 +19,7 @@ class ReadWriteData:
         extension = ''
         valid = True
         # Split the file name and verify each substring
-        new_input_file = ReadWriteData.input_file.split(".")
+        new_input_file = self.input_file.split(".")
 
         if len(new_input_file) < 1:
             valid = False
@@ -61,7 +60,6 @@ class ReadWriteData:
         return valid
 
     # Method to create the Node DataFrame
-    @staticmethod
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
@@ -107,7 +105,6 @@ class ReadWriteData:
         return node_df
 
     # Method to create the edge DataFrame
-    @staticmethod
     def create_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
@@ -153,7 +150,6 @@ class ReadWriteData:
         return edge_df
 
     # Method to check for duplicate nodes in the existing file and new DataFrame
-    @staticmethod
     def check_node_duplicates(self, node_df, existing_df):
         # Create a new node DataFrame with the non-duplicated nodes
         temp_node_df = pd.concat([node_df, existing_df])
@@ -162,7 +158,6 @@ class ReadWriteData:
         return new_node_df
 
     # Method to check edge duplicates
-    @staticmethod
     def check_edge_duplicates(self, edge_df, existing_df):
         # Create a new edge DataFrame with the non-duplicated nodes
         temp_edge_df = pd.concat([edge_df, existing_df])
@@ -171,7 +166,6 @@ class ReadWriteData:
         return new_edge_df
 
     # Method to write data in the correct format to csv files
-    @staticmethod
     def write_data_to_csv(self, node_df, edge_df, int_order):
         data_written_to_csv = True
         node_file_name = 'nodes.csv'
@@ -211,11 +205,10 @@ class ReadWriteData:
 
     # Method to read in data and write data from and to a csv file
     # TODO rename this function
-    @staticmethod
     def read_data_from_csv(self):
         read_write_done = True
 
-        file_path = os.path.join('../sampleData/', ReadWriteData.input_file)
+        file_path = os.path.join('../sampleData/', self.input_file)
         df = pd.read_csv(file_path)
         int_order = int(order)
 
@@ -224,18 +217,18 @@ class ReadWriteData:
         else:
             # print(df)
             # Get the node_df in order to write to csv
-            node_df = ReadWriteData.create_node_df(df, int_order)
+            node_df = self.create_node_df(df, int_order)
             # Get the edge_df in order to write to csv
             # Ignore order 1 as the SNPs are already added to the nodes
             edge_df = pd.DataFrame()
             if int_order != 1:
-                edge_df = ReadWriteData.create_edge_df(df, int_order)
+                edge_df = self.create_edge_df(df, int_order)
 
             if node_df.empty or (edge_df.empty and int_order != 1):
                 read_write_done = False
                 print("Error the newly created DataFrames are empty.")
             else:
-                data_written = ReadWriteData.write_data_to_csv(node_df, edge_df, int_order)
+                data_written = self.write_data_to_csv(node_df, edge_df, int_order)
 
                 if not data_written:
                     read_write_done = False

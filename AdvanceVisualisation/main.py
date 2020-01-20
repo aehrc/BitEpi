@@ -1,6 +1,5 @@
 import argparse
-
-from . import ReadWriteData
+from ReadWriteData import ReadWriteData
 
 
 def main():
@@ -10,7 +9,7 @@ def main():
                         help="Argument in the form of: -i <input_file.csv>")
     args = vars(parser.parse_args())
     input_file = args["i"]
-    read_write_data = ReadWriteData()
+    read_write_data = ReadWriteData(input_file)
     valid = read_write_data.validate_input_file()
     if valid:
         print("The input file, {}, has been successfully validated."
