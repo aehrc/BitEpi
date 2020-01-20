@@ -221,9 +221,10 @@ class ReadWriteData:
                 print("Error the newly created DataFrames are empty.")
             else:
                 data_written = self.write_data_to_csv(node_df, edge_df, int_order)
-                # TODO return an array of the two dataframes to main
+                # Send the DataFrames as an array
+                cytoscape_df = [node_df, edge_df, read_write_done]
                 if not data_written:
                     read_write_done = False
                     print("Error could not write data to the csv file/s!")
 
-        return read_write_done
+        return cytoscape_df
