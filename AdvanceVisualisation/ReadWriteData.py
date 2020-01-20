@@ -28,8 +28,8 @@ class ReadWriteData:
 
         # Alpha or Beta
         input_type = new_input_file[1]
-        if (input_type == "Alpha" or input_type == "Beta"
-            or input_type == "best") and valid:
+        if (input_type == "Alpha" or input_type == "Beta" or input_type == "best") \
+                and valid:
             if input_type != "best":
                 order = new_input_file[2]
                 if order != "1" and order != "2" \
@@ -48,14 +48,6 @@ class ReadWriteData:
 
             if (extension != "csv") and valid:
                 valid = False
-
-        # print("prefix: {} ".format(prefix))
-        # print("input_type: {} ".format(input_type))
-        # print("order: {} ".format(order))
-        # print("first_job_index: {} ".format(first_job_index))
-        # print("last_job_index: {} ".format(last_job_index))
-        # print("extension: {} ".format(extension))
-        # print("valid: {} ".format(valid))
 
         return valid
 
