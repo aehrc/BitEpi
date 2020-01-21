@@ -37,14 +37,14 @@ class CytoscapeIntegration:
         my_style = cy.style.create('my_style')
 
         new_styles = {
-            'NODE_FILL_COLOR': '#ff0000',
+            'NODE_FILL_COLOR': 'green',
             'NODE_SIZE': 30,
             'NODE_BORDER_WIDTH': 0,
             'NODE_TRANSPARENCY': 120,
             'NODE_LABEL_COLOR': 'black',
 
             'EDGE_WIDTH': 3,
-            'EDGE_STROKE_UNSELECTED_PAINT': '#000000',
+            'EDGE_STROKE_UNSELECTED_PAINT': '#d3d3d3',
             'EDGE_LINE_TYPE': 'SOLID',
             'EDGE_TRANSPARENCY': 120,
 
@@ -55,16 +55,11 @@ class CytoscapeIntegration:
 
         # Discrete mappings for specific regions
         key_value_pair = {
-            'N0': '#4169e',
-            'N3': '#4169e',
-            'N0N3': '#4169e',
-            'N37': '#4169e',
-            'N0N3N37': '#4169e',
-            'N6': '#4169e',
-            'N0N6': '#4169e'
+            'N0': 'red',
+            'N3': 'red',
         }
 
-        my_style.create_discrete_mapping(column='Source', col_type='string', vp='NODE_FILL_COLOR',
+        my_style.create_discrete_mapping(column='name', col_type='String', vp='NODE_FILL_COLOR',
                                          mappings=key_value_pair)
 
         cy.style.apply(my_style, edge_graph)
