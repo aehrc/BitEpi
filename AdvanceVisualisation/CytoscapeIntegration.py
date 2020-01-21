@@ -25,7 +25,6 @@ class CytoscapeIntegration:
         cy.session.delete()
         # Create a network from edge_df
         self.edge_df.head()
-        print(self.edge_df.head())
 
         source = self.edge_df.columns[1]
         target = self.edge_df.columns[0]
@@ -33,6 +32,23 @@ class CytoscapeIntegration:
         edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
                                                       interaction_col=source, name='Edges '
                                                                                    'graph')
+        # Add styles to the network
+        style = cy.style.create('default')
+
+        style_settings = {
+            'NODE_FILL_COLOR': '#de1738',
+            'BODE_BORDER_WIDTH': 0,
+            'NODE_LABEL_COLOR': '#000000',
+            'NETWORK_BACKGROUND_PAINT': '#ffffff'
+        }
+
+        style.update_defaults(style_settings)
+
+        # Discrete mappings for specific nodes
+        key_value_pair = {
+            'N0': '#111E6C'
+        }
+        style.create_discrete_mapping(column=source, col_type='string', vp='NODE_FILL_COLOR', mappings=key_value_pair)
 
         cy.layout.apply(network=edge_graph)
         cy.layout.fit(network=edge_graph)

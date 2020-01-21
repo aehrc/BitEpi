@@ -30,7 +30,7 @@ def main():
             if cytoscape_successful:
                 print("Successful creation of network!")
             else:
-                print("Network creation unsuccessful :(")
+                print("Network creation unsuccessful, please make sure that Cytoscape is running in the background")
         else:
             print("Error has occurred in Read and/or Write of the file.")
     else:
