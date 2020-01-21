@@ -32,25 +32,28 @@ class CytoscapeIntegration:
         edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
                                                       interaction_col=source, name='Edges '
                                                                                    'graph')
-        # Add styles to the network
-        style = cy.style.create('default')
-
-        style_settings = {
-            'NODE_FILL_COLOR': '#de1738',
-            'BODE_BORDER_WIDTH': 0,
-            'NODE_LABEL_COLOR': '#000000',
-            'NETWORK_BACKGROUND_PAINT': '#ffffff'
-        }
-
-        style.update_defaults(style_settings)
-
-        # Discrete mappings for specific nodes
-        key_value_pair = {
-            'N0': '#111E6C'
-        }
-        style.create_discrete_mapping(column=source, col_type='string', vp='NODE_FILL_COLOR', mappings=key_value_pair)
-
         cy.layout.apply(network=edge_graph)
+        # Add styles to the network
+        my_style = cy.style.create('my_style')
+
+        new_styles = {
+            'NODE_FILL_COLOR': '#111e6c',
+            'NODE_SIZE': 20,
+            'NODE_BORDER_WIDTH': 0,
+            'NODE_TRANSPARENCY': 120,
+            'NODE_LABEL_COLOR': 'white',
+
+            'EDGE_WIDTH': 3,
+            'EDGE_STROKE_UNSELECTED_PAINT': '#aaaaaa',
+            'EDGE_LINE_TYPE': 'LONG_DASH',
+            'EDGE_TRANSPARENCY': 120,
+
+            'NETWORK_BACKGROUND_PAINT': 'black'
+        }
+
+        my_style.update_defaults(new_styles)
+        cy.style.apply(my_style, edge_graph)
+
         cy.layout.fit(network=edge_graph)
         Image(edge_graph.get_png(height=400))
 
