@@ -55,7 +55,7 @@ class ReadWriteData:
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=["Node"])
+        node_df = pd.DataFrame(columns=["Node", "Order"])
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -66,7 +66,7 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([cell_value], columns=["Node"]),
+                                         ([[cell_value, int_order]], columns=["Node", "Order"]),
                                          ignore_index=True)
                 if (i + 1) >= 2:
                     new_cell_value = ''
@@ -90,7 +90,7 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([new_cell_value], columns=["Node"]),
+                        (pd.DataFrame([[new_cell_value, int_order]], columns=["Node", "Order"]),
                          ignore_index=True)
 
         # print(node_df)
@@ -165,12 +165,17 @@ class ReadWriteData:
         node_file_path = os.path.join('OutputData/', node_file_name)
         edge_file_path = os.path.join('OutputData/', edge_file_name)
 
+        # DataFrames to send to Cytoscape
+        correct_node_df = pd.DataFrame
+        correct_edge_df = pd.DataFrame
+
         # Check if files exist
         # Create a new file if there is no existing one
         # If exists then append to the existing file
         if not os.path.isfile(node_file_path):
             print("No existing node file found. Creating a new file nodes.csv")
             node_df.to_csv(node_file_path, encoding='utf-8', index=False)
+            correct_node_df = node_df
         else:
             print("Existing node file found. Appending to node.csv")
             # Read in the existing DataFrame and check for duplicates
@@ -179,11 +184,13 @@ class ReadWriteData:
             new_node_df = self.check_node_duplicates(node_df, existing_df)
             os.remove(node_file_path)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
+            correct_node_df = new_node_df
 
         if int_order != 1:
             if not os.path.isfile(edge_file_path):
                 print("No existing edges file found. Creating a new file edges.csv")
                 edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+                correct_edge_df = edge_df
             else:
                 print("Existing edges file found. Appending to edges.csv")
                 # Read in the existing DataFrame and check for duplicates
@@ -192,8 +199,12 @@ class ReadWriteData:
                 new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
                 os.remove(edge_file_path)
                 new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+                correct_edge_df = new_edge_df
 
-        return data_written_to_csv
+        # Send the DataFrames (which were checked for duplication) to Cytoscape
+        data_written = [correct_node_df, correct_edge_df, data_written_to_csv]
+
+        return data_written
 
     # Method to read in data and write data from and to a csv file
     # TODO rename this function
@@ -221,10 +232,13 @@ class ReadWriteData:
                 print("Error the newly created DataFrames are empty.")
             else:
                 data_written = self.write_data_to_csv(node_df, edge_df, int_order)
-                # Send the DataFrames as an array
-                cytoscape_df = [node_df, edge_df, read_write_done]
-                if not data_written:
+
+                if not data_written[2]:
                     read_write_done = False
                     print("Error could not write data to the csv file/s!")
+
+                else:
+                    # Send the DataFrames as an array
+                    cytoscape_df = [data_written[0], data_written[1], read_write_done]
 
         return cytoscape_df

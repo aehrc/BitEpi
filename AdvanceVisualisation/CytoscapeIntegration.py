@@ -16,6 +16,8 @@ class CytoscapeIntegration:
         self.node_df = node_df
         self.edge_df = edge_df
 
+    def update_columns(self, col_name, col_index):
+
     def cytoscape_successful(self):
         cytoscape_successful = True
 
@@ -29,9 +31,18 @@ class CytoscapeIntegration:
         source = self.edge_df.columns[1]
         target = self.edge_df.columns[0]
 
+        # Create edge network from DataFrame
         edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
-                                                      interaction_col=source, name='Edges '
-                                                                                   'graph')
+                                                      interaction_col=source, name='New network!')
+
+        # Merge node_df in cytoscape
+        edge_graph.update_node_table(df=self.node_df, network_key_col='name')
+        # Add attributes to Node table
+        edge_graph.create_node_column(name="Order", data_type='Integer', is_immutable=False, is_list=True)
+        self.update_columns("Order", 1)
+
+        edge_graph.get_node_table().head()
+
         cy.layout.apply(network=edge_graph)
         # Add styles to the network
         my_style = cy.style.create('my_style')
