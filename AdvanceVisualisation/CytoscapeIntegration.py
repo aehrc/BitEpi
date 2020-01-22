@@ -16,7 +16,16 @@ class CytoscapeIntegration:
         self.node_df = node_df
         self.edge_df = edge_df
 
-    def update_columns(self, col_name, col_index):
+    # Method to add the specific row values of the node table columns
+    def update_columns(self, edge_graph, col_name):
+        node_table = edge_graph.get_node_table()
+        for index, row in self.node_df.iterrows():
+            cell_value = self.node_df.at[index, col_name]
+            if node_table.get_value(index, col_name) != cell_value:
+                print("bloop")
+                node_table.set_value(index, col_name, cell_value)
+
+        print(node_table)
 
     def cytoscape_successful(self):
         cytoscape_successful = True
@@ -36,12 +45,12 @@ class CytoscapeIntegration:
                                                       interaction_col=source, name='New network!')
 
         # Merge node_df in cytoscape
-        edge_graph.update_node_table(df=self.node_df, network_key_col='name')
+        edge_graph.update_node_table(df=self.node_df, network_key_col='name', data_key_col='name')
         # Add attributes to Node table
-        edge_graph.create_node_column(name="Order", data_type='Integer', is_immutable=False, is_list=True)
-        self.update_columns("Order", 1)
-
-        edge_graph.get_node_table().head()
+        edge_graph.create_node_column(name="Order")
+        print(edge_graph.get_node_table().head())
+        # Add row values of the column
+        self.update_columns(edge_graph, "Order")
 
         cy.layout.apply(network=edge_graph)
         # Add styles to the network
