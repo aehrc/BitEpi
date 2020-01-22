@@ -43,7 +43,6 @@ class CytoscapeIntegration:
         # Create edge network from DataFrame
         edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
                                                       interaction_col=source, name='New network!')
-
         # Merge node_df in cytoscape
         edge_graph.update_node_table(df=self.node_df, network_key_col='name', data_key_col='name')
         # Add attributes to Node table
