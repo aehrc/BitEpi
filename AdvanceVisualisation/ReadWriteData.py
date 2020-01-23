@@ -55,7 +55,7 @@ class ReadWriteData:
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=['node', 'order', 'id'])
+        node_df = pd.DataFrame(columns=['name', 'order', 'id'])
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -66,7 +66,7 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value, int_order, cell_value]], columns=['node', 'order', 'id']),
+                                         ([[cell_value, int_order, cell_value]], columns=['name', 'order', 'id']),
                                          ignore_index=True)
                 if (i + 1) >= 2:
                     new_cell_value = ''
@@ -90,7 +90,7 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value]], columns=['node', 'order', 'id']),
+                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value]], columns=['name', 'order', 'id']),
                          ignore_index=True)
 
         # print(node_df)
@@ -100,7 +100,7 @@ class ReadWriteData:
     def create_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
-        edge_df = pd.DataFrame(columns=['target', 'source', 'id'])
+        edge_df = pd.DataFrame(columns=['target', 'source', 'id', 'interaction'])
 
         for index, row in df.iterrows():
             for i in range(int_order):
@@ -134,8 +134,8 @@ class ReadWriteData:
                                + str(snp_c_cell_value) + str(snp_d_cell_value)
 
                     # Add the new edge-node pair to the DataFrame
-                    edge_df = edge_df.append(pd.DataFrame([[edge_value, node, edge_value]],
-                                                          columns=['target', 'source', 'id']),
+                    edge_df = edge_df.append(pd.DataFrame([[edge_value, node, edge_value, node]],
+                                                          columns=['target', 'source', 'id', 'interaction']),
                                              ignore_index=True)
 
         # print(edge_df)

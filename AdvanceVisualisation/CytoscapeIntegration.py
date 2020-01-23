@@ -1,3 +1,5 @@
+import os
+
 from py2cytoscape.data.cyrest_client import CyRestClient
 from py2cytoscape.data.util_network import NetworkUtil as util
 from py2cytoscape.data.style import StyleUtil as s_util
@@ -16,30 +18,30 @@ class CytoscapeIntegration:
     def __init__(self, node_df, edge_df):
         self.node_df = node_df
         self.edge_df = edge_df
+        self.json_file_name = 'json_file.json'
+        self.json_file_path = os.path.join('OutputData/', self.json_file_name)
 
     # Method to convert dataframe to a json file
     def dataframe_to_json(self):
 
         # Create new node and edge dictionaries
-        node_dic = self.node_df.groupby(self.node_df.node).agg(list).reset_index().set_axis(['name', 'order', 'id'],
-                                                                                            axis=1,
-                                                                                            inplace=False).to_dict(
-            'records')
+        node_dic = self.node_df.to_dict('records')
         edge_dic = self.edge_df.to_dict('records')
         complete_node_list = []
         complete_edge_list = []
 
         # Add node_dic rows as new individual dictionaries to complete_node_list
         for i in range(len(node_dic)):
-            temp_node_dic = {'selected': False, 'data': node_dic[i]}
+            temp_node_dic = {'data': node_dic[i], 'selected': False}
             complete_node_list.append(temp_node_dic)
 
         for i in range(len(edge_dic)):
-            temp_edge_dic = {'data': edge_dic[i]}
+            temp_edge_dic = {'data': edge_dic[i], 'selected': False}
             complete_edge_list.append(temp_edge_dic)
 
         # Create dictionary containing both the node and edge data
         elements_dic = {'nodes': complete_node_list, 'edges': complete_edge_list}
+        name_dic = {'name': 'Node_Edge_Network'}
 
         col_node_list = []
         col_edge_list = []
@@ -57,13 +59,10 @@ class CytoscapeIntegration:
         col_types_dic = {'node': col_node_list, 'edge': col_edge_list}
 
         # Complete dictionary of data to be converted to json file
-        full_dict = {"columnTypes": col_types_dic, 'elements': elements_dic}
+        full_dict = {'data': name_dic, 'elements': elements_dic}
 
-        json_data = json.dumps(full_dict)
-
-        print(json_data)
-
-        return True
+        with open(self.json_file_path, 'w') as outfile:
+            json.dump(full_dict, outfile, sort_keys=True, indent=4)
 
     def cytoscape_successful(self):
         cytoscape_successful = True
@@ -75,15 +74,11 @@ class CytoscapeIntegration:
         # Create a network from edge_df
         self.edge_df.head()
 
-        source = self.edge_df.columns[1]
-        target = self.edge_df.columns[0]
-
-        # Create edge network from DataFrame
-        edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
-                                                      interaction_col=source, name='New network!')
-
-        # Convert dataframe to json file
+        # Convert dataframe to json file and save file
         self.dataframe_to_json()
+
+        # Create edge network from json file
+        edge_graph = cy.network.create_from(self.json_file_path)
 
         cy.layout.apply(network=edge_graph)
         # Add styles to the network
