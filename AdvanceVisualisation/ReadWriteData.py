@@ -66,7 +66,7 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value, int_order, cell_value, input_type]],
+                                         ([[cell_value, order, cell_value, input_type]],
                                           columns=['name', 'order', 'id', 'input type']),
                                          ignore_index=True)
                 if (i + 1) >= 2:
@@ -91,7 +91,7 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value, input_type]],
+                        (pd.DataFrame([[new_cell_value, order, new_cell_value, input_type]],
                                       columns=['name', 'order', 'id', 'input type']),
                          ignore_index=True)
 

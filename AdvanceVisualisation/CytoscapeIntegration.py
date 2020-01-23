@@ -70,7 +70,7 @@ class CytoscapeIntegration:
 
         new_styles = {
             'NODE_FILL_COLOR': 'red',
-            'NODE_SIZE': 30,
+            'NODE_SIZE': 25,
             'NODE_BORDER_WIDTH': 0,
             'NODE_TRANSPARENCY': 120,
             'NODE_LABEL_COLOR': 'black',
@@ -87,15 +87,24 @@ class CytoscapeIntegration:
 
         # Discrete mappings for specific regions
         # Colour by order and set size by Alpha/ Beta
-        key_value_pair = {
-            'N0': '#1974d2',
-            'N3': '#1974d2',
-            'N6': '#1974d2',
-            'N19': '#1974d2'
+
+        order_key_value_pair = {
+            '1': '#d4af37',
+            '2': '#00ff00',
+            '3': 'red',
+            '4': '#1974d2'
         }
 
-        my_style.create_discrete_mapping(column='name', col_type='String', vp='NODE_FILL_COLOR',
-                                         mappings=key_value_pair)
+        my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
+                                         mappings=order_key_value_pair)
+
+        type_key_value_pair = {
+            'Alpha': 25,
+            'Beta': 75
+        }
+
+        my_style.create_discrete_mapping(column='input type', col_type='String', vp='NODE_SIZE',
+                                         mappings=type_key_value_pair)
 
         cy.style.apply(my_style, node_edge_network)
 
