@@ -19,7 +19,7 @@ class ReadWriteData:
         extension = ''
         valid = True
         # Split the file name and verify each substring
-        new_input_file = self.input_file.split(".")
+        new_input_file = self.input_file.split('.')
 
         if len(new_input_file) < 1:
             valid = False
@@ -28,12 +28,12 @@ class ReadWriteData:
 
         # Alpha or Beta
         input_type = new_input_file[1]
-        if (input_type == "Alpha" or input_type == "Beta" or input_type == "best") \
+        if (input_type == 'Alpha' or input_type == 'Beta' or input_type == 'best') \
                 and valid:
-            if input_type != "best":
+            if input_type != 'best':
                 order = new_input_file[2]
-                if order != "1" and order != "2" \
-                        and order != "3" and order != "4":
+                if order != '1' and order != '2' \
+                        and order != '3' and order != '4':
                     valid = False
 
                 # JobIndex is only there depending on the length of the list
@@ -46,16 +46,16 @@ class ReadWriteData:
 
             extension = new_input_file[-1]
 
-            if (extension != "csv") and valid:
+            if (extension != 'csv') and valid:
                 valid = False
 
         return valid
 
-    # Method to create the Node DataFrame
+    # Method to create the node DataFrame
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=["Node", "Order"])
+        node_df = pd.DataFrame(columns=['node', 'order', 'id'])
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -66,7 +66,7 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value, int_order]], columns=["Node", "Order"]),
+                                         ([[cell_value, int_order, cell_value]], columns=['node', 'order', 'id']),
                                          ignore_index=True)
                 if (i + 1) >= 2:
                     new_cell_value = ''
@@ -90,7 +90,7 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([[new_cell_value, int_order]], columns=["Node", "Order"]),
+                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value]], columns=['node', 'order', 'id']),
                          ignore_index=True)
 
         # print(node_df)
@@ -100,7 +100,7 @@ class ReadWriteData:
     def create_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
-        edge_df = pd.DataFrame(columns=["Target", "Source"])
+        edge_df = pd.DataFrame(columns=['target', 'source', 'id'])
 
         for index, row in df.iterrows():
             for i in range(int_order):
@@ -114,28 +114,28 @@ class ReadWriteData:
                     node = ''
                     # Create the node which is a concatenation of all the SNPs
                     if int_order == 2:
-                        snp_a_cell_value = df.at[index, "SNP_A"]
-                        snp_b_cell_value = df.at[index, "SNP_B"]
+                        snp_a_cell_value = df.at[index, 'SNP_A']
+                        snp_b_cell_value = df.at[index, 'SNP_B']
                         node = str(snp_a_cell_value) + str(snp_b_cell_value)
 
                     elif int_order == 3:
-                        snp_a_cell_value = df.at[index, "SNP_A"]
-                        snp_b_cell_value = df.at[index, "SNP_B"]
-                        snp_c_cell_value = df.at[index, "SNP_C"]
+                        snp_a_cell_value = df.at[index, 'SNP_A']
+                        snp_b_cell_value = df.at[index, 'SNP_B']
+                        snp_c_cell_value = df.at[index, 'SNP_C']
                         node = str(snp_a_cell_value) + str(snp_b_cell_value) \
                                + str(snp_c_cell_value)
 
                     elif int_order == 4:
-                        snp_a_cell_value = df.at[index, "SNP_A"]
-                        snp_b_cell_value = df.at[index, "SNP_B"]
-                        snp_c_cell_value = df.at[index, "SNP_C"]
-                        snp_d_cell_value = df.at[index, "SNP_D"]
+                        snp_a_cell_value = df.at[index, 'SNP_A']
+                        snp_b_cell_value = df.at[index, 'SNP_B']
+                        snp_c_cell_value = df.at[index, 'SNP_C']
+                        snp_d_cell_value = df.at[index, 'SNP_D']
                         node = str(snp_a_cell_value) + str(snp_b_cell_value) \
                                + str(snp_c_cell_value) + str(snp_d_cell_value)
 
                     # Add the new edge-node pair to the DataFrame
-                    edge_df = edge_df.append(pd.DataFrame([[edge_value, node]],
-                                                          columns=["Target", "Source"]),
+                    edge_df = edge_df.append(pd.DataFrame([[edge_value, node, edge_value]],
+                                                          columns=['target', 'source', 'id']),
                                              ignore_index=True)
 
         # print(edge_df)
@@ -154,7 +154,7 @@ class ReadWriteData:
         # Create a new edge DataFrame with the non-duplicated nodes
         temp_edge_df = pd.concat([edge_df, existing_df])
         # Remove duplicates and keep only the first occurrence of the node
-        new_edge_df = temp_edge_df.drop_duplicates(subset=['Target', 'Source'], keep='first')
+        new_edge_df = temp_edge_df.drop_duplicates(subset=['target', 'source', 'id'], keep='first')
         return new_edge_df
 
     # Method to write data in the correct format to csv files
@@ -173,11 +173,11 @@ class ReadWriteData:
         # Create a new file if there is no existing one
         # If exists then append to the existing file
         if not os.path.isfile(node_file_path):
-            print("No existing node file found. Creating a new file nodes.csv")
+            print('No existing node file found. Creating a new file nodes.csv')
             node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = node_df
         else:
-            print("Existing node file found. Appending to node.csv")
+            print('Existing node file found. Appending to node.csv')
             # Read in the existing DataFrame and check for duplicates
             existing_df = pd.read_csv(node_file_path)
             # Get a new DataFrame without any duplicated nodes
@@ -188,11 +188,11 @@ class ReadWriteData:
 
         if int_order != 1:
             if not os.path.isfile(edge_file_path):
-                print("No existing edges file found. Creating a new file edges.csv")
+                print('No existing edges file found. Creating a new file edges.csv')
                 edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
                 correct_edge_df = edge_df
             else:
-                print("Existing edges file found. Appending to edges.csv")
+                print('Existing edges file found. Appending to edges.csv')
                 # Read in the existing DataFrame and check for duplicates
                 existing_df = pd.read_csv(edge_file_path)
                 # Get a new DataFrame without any duplicated edges
@@ -229,13 +229,13 @@ class ReadWriteData:
 
             if node_df.empty or (edge_df.empty and int_order != 1):
                 read_write_done = False
-                print("Error the newly created DataFrames are empty.")
+                print('Error the newly created DataFrames are empty.')
             else:
                 data_written = self.write_data_to_csv(node_df, edge_df, int_order)
 
                 if not data_written[2]:
                     read_write_done = False
-                    print("Error could not write data to the csv file/s!")
+                    print('Error could not write data to the csv file/s!')
 
                 else:
                     # Send the DataFrames as an array

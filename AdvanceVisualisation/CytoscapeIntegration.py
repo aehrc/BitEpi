@@ -9,6 +9,7 @@ from networkx.drawing import nx_pydot as pyd
 import igraph as ig
 import numpy as np
 import pandas as pd
+import json
 
 
 class CytoscapeIntegration:
@@ -16,16 +17,53 @@ class CytoscapeIntegration:
         self.node_df = node_df
         self.edge_df = edge_df
 
-    # Method to add the specific row values of the node table columns
-    def update_columns(self, edge_graph, col_name):
-        node_table = edge_graph.get_node_table()
-        for index, row in self.node_df.iterrows():
-            cell_value = self.node_df.at[index, col_name]
-            if node_table.get_value(index, col_name) != cell_value:
-                print("bloop")
-                node_table.set_value(index, col_name, cell_value)
+    # Method to convert dataframe to a json file
+    def dataframe_to_json(self):
 
-        print(node_table)
+        # Create new node and edge dictionaries
+        node_dic = self.node_df.groupby(self.node_df.node).agg(list).reset_index().set_axis(['name', 'order', 'id'],
+                                                                                            axis=1,
+                                                                                            inplace=False).to_dict(
+            'records')
+        edge_dic = self.edge_df.to_dict('records')
+        complete_node_list = []
+        complete_edge_list = []
+
+        # Add node_dic rows as new individual dictionaries to complete_node_list
+        for i in range(len(node_dic)):
+            temp_node_dic = {'selected': False, 'data': node_dic[i]}
+            complete_node_list.append(temp_node_dic)
+
+        for i in range(len(edge_dic)):
+            temp_edge_dic = {'data': edge_dic[i]}
+            complete_edge_list.append(temp_edge_dic)
+
+        # Create dictionary containing both the node and edge data
+        elements_dic = {'nodes': complete_node_list, 'edges': complete_edge_list}
+
+        col_node_list = []
+        col_edge_list = []
+
+        # Get column names and column types
+        for i in range(len(self.node_df.columns)):
+            temp_col_node_dic = {'columnName': self.node_df.columns[i], 'type': 'String'}
+            col_node_list.append(temp_col_node_dic)
+
+        for i in range(len(self.edge_df.columns)):
+            temp_col_edge_dic = {'columnName': self.edge_df.columns[i], 'type': 'String'}
+            col_edge_list.append(temp_col_edge_dic)
+
+        # Dictionary containing all the column details
+        col_types_dic = {'node': col_node_list, 'edge': col_edge_list}
+
+        # Complete dictionary of data to be converted to json file
+        full_dict = {"columnTypes": col_types_dic, 'elements': elements_dic}
+
+        json_data = json.dumps(full_dict)
+
+        print(json_data)
+
+        return True
 
     def cytoscape_successful(self):
         cytoscape_successful = True
@@ -43,27 +81,23 @@ class CytoscapeIntegration:
         # Create edge network from DataFrame
         edge_graph = cy.network.create_from_dataframe(self.edge_df, source_col=source, target_col=target,
                                                       interaction_col=source, name='New network!')
-        # Merge node_df in cytoscape
-        edge_graph.update_node_table(df=self.node_df, network_key_col='name', data_key_col='name')
-        # Add attributes to Node table
-        edge_graph.create_node_column(name="Order")
-        print(edge_graph.get_node_table().head())
-        # Add row values of the column
-        self.update_columns(edge_graph, "Order")
+
+        # Convert dataframe to json file
+        self.dataframe_to_json()
 
         cy.layout.apply(network=edge_graph)
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
         new_styles = {
-            'NODE_FILL_COLOR': 'green',
+            'NODE_FILL_COLOR': 'red',
             'NODE_SIZE': 30,
             'NODE_BORDER_WIDTH': 0,
             'NODE_TRANSPARENCY': 120,
             'NODE_LABEL_COLOR': 'black',
 
             'EDGE_WIDTH': 3,
-            'EDGE_STROKE_UNSELECTED_PAINT': '#d3d3d3',
+            'EDGE_STROKE_UNSELECTED_PAINT': '#333333',
             'EDGE_LINE_TYPE': 'SOLID',
             'EDGE_TRANSPARENCY': 120,
 
@@ -74,8 +108,10 @@ class CytoscapeIntegration:
 
         # Discrete mappings for specific regions
         key_value_pair = {
-            'N0': 'red',
-            'N3': 'red',
+            'N0': '#1974d2',
+            'N3': '#1974d2',
+            'N6': '#1974d2',
+            'N19': '#1974d2'
         }
 
         my_style.create_discrete_mapping(column='name', col_type='String', vp='NODE_FILL_COLOR',
