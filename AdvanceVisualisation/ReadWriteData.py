@@ -55,7 +55,7 @@ class ReadWriteData:
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=['name', 'order', 'id'])
+        node_df = pd.DataFrame(columns=['name', 'order', 'id', 'input type'])
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -66,7 +66,8 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value, int_order, cell_value]], columns=['name', 'order', 'id']),
+                                         ([[cell_value, int_order, cell_value, input_type]],
+                                          columns=['name', 'order', 'id', 'input type']),
                                          ignore_index=True)
                 if (i + 1) >= 2:
                     new_cell_value = ''
@@ -90,7 +91,8 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value]], columns=['name', 'order', 'id']),
+                        (pd.DataFrame([[new_cell_value, int_order, new_cell_value, input_type]],
+                                      columns=['name', 'order', 'id', 'input type']),
                          ignore_index=True)
 
         # print(node_df)
@@ -108,7 +110,8 @@ class ReadWriteData:
                 edge_value = df.iat[index, i + 1]
 
                 # If order is one
-                # TODO Check if the SNP is from Alpha and Beta
+                if int_order == 1:
+                    edge_df = {}
                 # If order is greater than 1
                 if int_order >= 2:
                     node = ''
@@ -186,20 +189,19 @@ class ReadWriteData:
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = new_node_df
 
-        if int_order != 1:
-            if not os.path.isfile(edge_file_path):
-                print('No existing edges file found. Creating a new file edges.csv')
-                edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
-                correct_edge_df = edge_df
-            else:
-                print('Existing edges file found. Appending to edges.csv')
-                # Read in the existing DataFrame and check for duplicates
-                existing_df = pd.read_csv(edge_file_path)
-                # Get a new DataFrame without any duplicated edges
-                new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
-                os.remove(edge_file_path)
-                new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
-                correct_edge_df = new_edge_df
+        if not os.path.isfile(edge_file_path):
+            print('No existing edges file found. Creating a new file edges.csv')
+            edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+            correct_edge_df = edge_df
+        else:
+            print('Existing edges file found. Appending to edges.csv')
+            # Read in the existing DataFrame and check for duplicates
+            existing_df = pd.read_csv(edge_file_path)
+            # Get a new DataFrame without any duplicated edges
+            new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
+            os.remove(edge_file_path)
+            new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+            correct_edge_df = new_edge_df
 
         # Send the DataFrames (which were checked for duplication) to Cytoscape
         data_written = [correct_node_df, correct_edge_df, data_written_to_csv]
