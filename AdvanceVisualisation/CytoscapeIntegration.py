@@ -64,19 +64,19 @@ class CytoscapeIntegration:
         # Create edge network from json file
         node_edge_network = cy.network.create_from(self.json_file_path)
 
-        cy.layout.apply(network=node_edge_network)
+        cy.layout.apply(name='degree-circle', network=node_edge_network)
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
         new_styles = {
-            'NODE_FILL_COLOR': 'red',
+            'NODE_FILL_COLOR': '#8A030',
             'NODE_SIZE': 25,
             'NODE_BORDER_WIDTH': 0,
-            'NODE_TRANSPARENCY': 120,
-            'NODE_LABEL_COLOR': 'black',
+            'NODE_TRANSPARENCY': 255,
+            'NODE_LABEL_COLOR': '#323334',
 
             'EDGE_WIDTH': 3,
-            'EDGE_STROKE_UNSELECTED_PAINT': '#333333',
+            'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
             'EDGE_LINE_TYPE': 'SOLID',
             'EDGE_TRANSPARENCY': 120,
 
@@ -88,10 +88,10 @@ class CytoscapeIntegration:
         # Discrete mappings for specific regions
         # Colour by order and set size by Alpha/ Beta
         order_key_value_pair = {
-            '1': '#d4af37',
-            '2': '#00ff00',
-            '3': 'red',
-            '4': '#1974d2'
+            '1': '#8A030',
+            '2': '#0077be',
+            '3': '#f9d71c',
+            '4': '#014421'
         }
 
         my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
@@ -99,7 +99,7 @@ class CytoscapeIntegration:
 
         type_key_value_pair = {
             'Alpha': '25.0',
-            'Beta': '75.0'
+            'Beta': '50.0'
         }
 
         my_style.create_discrete_mapping(column='input type', col_type='String', vp='NODE_SIZE',
