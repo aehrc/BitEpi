@@ -37,7 +37,7 @@ cd BitEpi/AdvanceVisualisation/
 Then in order to run the program make sure to give a .csv file as the input to the command line argument -i as shown below. 
 
 ```
-python3 ./main.py -i out1.Alpha.4.csv
+python ./main.py -i out1.Alpha.4.csv
 ```
 
 Then Python will automatically provide you with the Cytoscape visualisation of the content in the file provided. 
