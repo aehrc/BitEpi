@@ -99,7 +99,7 @@ class CytoscapeIntegration:
 
         type_key_value_pair = {
             'Alpha': '25.0',
-            'Beta': '50.0'
+            'Beta': '35.0'
         }
 
         my_style.create_discrete_mapping(column='input type', col_type='String', vp='NODE_SIZE',
