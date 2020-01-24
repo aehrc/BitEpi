@@ -87,7 +87,6 @@ class CytoscapeIntegration:
 
         # Discrete mappings for specific regions
         # Colour by order and set size by Alpha/ Beta
-
         order_key_value_pair = {
             '1': '#d4af37',
             '2': '#00ff00',
@@ -99,8 +98,8 @@ class CytoscapeIntegration:
                                          mappings=order_key_value_pair)
 
         type_key_value_pair = {
-            'Alpha': 25,
-            'Beta': 75
+            'Alpha': '25.0',
+            'Beta': '75.0'
         }
 
         my_style.create_discrete_mapping(column='input type', col_type='String', vp='NODE_SIZE',
