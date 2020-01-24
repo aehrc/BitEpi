@@ -64,7 +64,7 @@ class CytoscapeIntegration:
         # Create edge network from json file
         node_edge_network = cy.network.create_from(self.json_file_path)
 
-        cy.layout.apply(name='degree-circle', network=node_edge_network)
+        cy.layout.apply(network=node_edge_network)
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
@@ -91,7 +91,7 @@ class CytoscapeIntegration:
             '1': '#8A030',
             '2': '#0077be',
             '3': '#f9d71c',
-            '4': '#014421'
+            '4': '#8a0303'
         }
 
         my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
