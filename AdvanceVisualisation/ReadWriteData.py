@@ -8,6 +8,7 @@ class ReadWriteData:
 
     def __init__(self, input_file):
         self.input_file = input_file
+        self.int_id = 0
 
     # Method to validate the input file
     def validate_input_file(self):
@@ -55,7 +56,7 @@ class ReadWriteData:
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=['name', 'order', 'id', 'input type'])
+        node_df = pd.DataFrame(columns=['id', 'name', 'order', 'input type'])
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -66,8 +67,9 @@ class ReadWriteData:
                 cell_value = df.iat[index, i + 1]
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value, order, cell_value, input_type]],
-                                          columns=['name', 'order', 'id', 'input type']),
+                                         ([[cell_value + "_" + input_type, cell_value + "_" + input_type, order,
+                                            input_type]],
+                                          columns=['id', 'name', 'order', 'input type']),
                                          ignore_index=True)
                 if (i + 1) >= 2:
                     new_cell_value = ''
@@ -91,8 +93,9 @@ class ReadWriteData:
 
                         # Add a cell value to the new DataFrame
                     node_df = node_df.append \
-                        (pd.DataFrame([[new_cell_value, order, new_cell_value, input_type]],
-                                      columns=['name', 'order', 'id', 'input type']),
+                        (pd.DataFrame(
+                            [[new_cell_value + "_" + input_type, new_cell_value + "_" + input_type, order, input_type]],
+                            columns=['id', 'name', 'order', 'input type']),
                          ignore_index=True)
 
         # print(node_df)
@@ -102,44 +105,45 @@ class ReadWriteData:
     def create_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
-        edge_df = pd.DataFrame(columns=['target', 'source', 'id', 'interaction'])
+        edge_df = pd.DataFrame(columns=['id', 'source', 'target', 'interaction'])
 
-        for index, row in df.iterrows():
-            for i in range(int_order):
-                # Get the cell value
-                edge_value = df.iat[index, i + 1]
+        # If the order is greater than 1 then there exist interactions between nodes
+        if int_order >= 2:
+            for index, row in df.iterrows():
+                for i in range(int_order):
+                    # Get the cell value
+                    edge_value = df.iat[index, i + 1]
 
-                # If order is one
-                if int_order == 1:
-                    edge_df = {}
-                # If order is greater than 1
-                if int_order >= 2:
-                    node = ''
-                    # Create the node which is a concatenation of all the SNPs
-                    if int_order == 2:
-                        snp_a_cell_value = df.at[index, 'SNP_A']
-                        snp_b_cell_value = df.at[index, 'SNP_B']
-                        node = str(snp_a_cell_value) + str(snp_b_cell_value)
+                    # If order is greater than 1
+                    if int_order >= 2:
+                        node = ''
+                        # Create the node which is a concatenation of all the SNPs
+                        if int_order == 2:
+                            snp_a_cell_value = df.at[index, 'SNP_A']
+                            snp_b_cell_value = df.at[index, 'SNP_B']
+                            node = str(snp_a_cell_value) + str(snp_b_cell_value)
 
-                    elif int_order == 3:
-                        snp_a_cell_value = df.at[index, 'SNP_A']
-                        snp_b_cell_value = df.at[index, 'SNP_B']
-                        snp_c_cell_value = df.at[index, 'SNP_C']
-                        node = str(snp_a_cell_value) + str(snp_b_cell_value) \
-                               + str(snp_c_cell_value)
+                        elif int_order == 3:
+                            snp_a_cell_value = df.at[index, 'SNP_A']
+                            snp_b_cell_value = df.at[index, 'SNP_B']
+                            snp_c_cell_value = df.at[index, 'SNP_C']
+                            node = str(snp_a_cell_value) + str(snp_b_cell_value) \
+                                   + str(snp_c_cell_value)
 
-                    elif int_order == 4:
-                        snp_a_cell_value = df.at[index, 'SNP_A']
-                        snp_b_cell_value = df.at[index, 'SNP_B']
-                        snp_c_cell_value = df.at[index, 'SNP_C']
-                        snp_d_cell_value = df.at[index, 'SNP_D']
-                        node = str(snp_a_cell_value) + str(snp_b_cell_value) \
-                               + str(snp_c_cell_value) + str(snp_d_cell_value)
+                        elif int_order == 4:
+                            snp_a_cell_value = df.at[index, 'SNP_A']
+                            snp_b_cell_value = df.at[index, 'SNP_B']
+                            snp_c_cell_value = df.at[index, 'SNP_C']
+                            snp_d_cell_value = df.at[index, 'SNP_D']
+                            node = str(snp_a_cell_value) + str(snp_b_cell_value) \
+                                   + str(snp_c_cell_value) + str(snp_d_cell_value)
 
-                    # Add the new edge-node pair to the DataFrame
-                    edge_df = edge_df.append(pd.DataFrame([[edge_value, node, edge_value, node]],
-                                                          columns=['target', 'source', 'id', 'interaction']),
-                                             ignore_index=True)
+                        # Add the new edge-node pair to the DataFrame
+                        edge_df = edge_df.append(pd.DataFrame([[edge_value + "_" + input_type, node + "_" + input_type,
+                                                                edge_value + "_" + input_type,
+                                                                node + "_" + input_type]],
+                                                              columns=['id', 'source', 'target', 'interaction']),
+                                                 ignore_index=True)
 
         # print(edge_df)
         return edge_df
@@ -147,15 +151,15 @@ class ReadWriteData:
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
         # Create a new node DataFrame with the non-duplicated nodes
-        temp_node_df = pd.concat([node_df, existing_df])
+        temp_node_df = pd.concat([node_df, existing_df], axis=0)
         # Remove duplicates and keep only the first occurrence of the node
-        new_node_df = temp_node_df.drop_duplicates(keep='first')
+        new_node_df = temp_node_df.drop_duplicates(subset='id')
         return new_node_df
 
     # Method to check edge duplicates
     def check_edge_duplicates(self, edge_df, existing_df):
         # Create a new edge DataFrame with the non-duplicated nodes
-        temp_edge_df = pd.concat([edge_df, existing_df])
+        temp_edge_df = pd.concat([edge_df, existing_df], axis=0)
         # Remove duplicates and keep only the first occurrence of the node
         new_edge_df = temp_edge_df.drop_duplicates(subset=['target', 'source', 'id'], keep='first')
         return new_edge_df
@@ -197,11 +201,16 @@ class ReadWriteData:
             print('Existing edges file found. Appending to edges.csv')
             # Read in the existing DataFrame and check for duplicates
             existing_df = pd.read_csv(edge_file_path)
-            # Get a new DataFrame without any duplicated edges
-            new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
-            os.remove(edge_file_path)
-            new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
-            correct_edge_df = new_edge_df
+            if existing_df.empty:
+                print('The existing file is empty. Creating a new file edges.csv')
+                edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+                correct_edge_df = edge_df
+            else:
+                # Get a new DataFrame without any duplicated edges
+                new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
+                os.remove(edge_file_path)
+                new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+                correct_edge_df = new_edge_df
 
         # Send the DataFrames (which were checked for duplication) to Cytoscape
         data_written = [correct_node_df, correct_edge_df, data_written_to_csv]
@@ -224,10 +233,7 @@ class ReadWriteData:
             # Get the node_df in order to write to csv
             node_df = self.create_node_df(df, int_order)
             # Get the edge_df in order to write to csv
-            # Ignore order 1 as the SNPs are already added to the nodes
-            edge_df = pd.DataFrame()
-            if int_order != 1:
-                edge_df = self.create_edge_df(df, int_order)
+            edge_df = self.create_edge_df(df, int_order)
 
             if node_df.empty or (edge_df.empty and int_order != 1):
                 read_write_done = False
