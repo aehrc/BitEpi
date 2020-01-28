@@ -122,7 +122,7 @@ class ReadWriteData:
                         columns=['id', 'name', 'order', 'Alpha', 'Beta', 'reason to exist']),
                         ignore_index=True)
 
-        print(node_df)
+        # print(node_df)
         return node_df
 
     # Method to create the edge DataFrame
@@ -175,9 +175,99 @@ class ReadWriteData:
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
         # Create a new node DataFrame with the non-duplicated nodes
-        temp_node_df = pd.concat([node_df, existing_df], axis=0)
-        # Remove duplicates and keep only the first occurrence of the node
-        new_node_df = temp_node_df.drop_duplicates(subset='id')
+        new_node_df = pd.concat([node_df, existing_df], axis=0).reset_index(drop=True)
+        print(new_node_df)
+        # Remove duplicates and keep only the node from order=1 or the original node
+        for index, row in new_node_df.iterrows():
+            # Get id of the node
+            # Check if important or not
+            # Check if the Alpha and Beta values exist
+            node_id = new_node_df.at[index, 'id']
+            node_important = new_node_df.at[index, 'reason to exist']
+            node_alpha = new_node_df.at[index, 'Alpha']
+            node_beta = new_node_df.at[index, 'Beta']
+
+            # If the important version of the node exists
+            if node_important == 'Important':
+                # If node's Alpha and beta values both exist
+                if node_alpha == 'Alpha' and node_beta == 'Beta':
+                    for index_check_all, row in new_node_df.iterrows():
+                        # Check if the index doesn't match the selected node
+                        if index != index_check_all:
+                            temp_node_id = new_node_df[index_check_all, 'id']
+                            if temp_node_id == node_id and (new_node_df.at[index_check_all, 'Beta'] == 'None' or
+                                                            new_node_df.at[index_check_all, 'Alpha'] == 'None'):
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+
+                # If node's Beta value isn't found
+                if node_alpha == 'Alpha' and node_beta == 'None':
+                    for index_check_beta, row in new_node_df.iterrows():
+                        temp_node_id = new_node_df[index_check_beta, 'id']
+                        if index != index_check_beta:
+                            if temp_node_id == node_id and new_node_df.at[index_check_beta, 'Beta'] != 'None':
+                                # Update the existing Beta value
+                                new_beta_value = new_node_df.at[index_check_beta, 'Beta']
+                                # Update the selected node's Beta value
+                                new_node_df.at[index, 'Beta'] = new_beta_value
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+                            # Beta value has been updates already so drop the rest of the duplicates
+                            elif temp_node_id == node_id and new_node_df.at[index, 'Beta'] != 'None':
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+
+                # If node's Alpha value isn't found
+                if node_alpha == 'None' and node_beta == 'Beta':
+                    for index_check_alpha, row in new_node_df.iterrows():
+                        temp_node_id = new_node_df[index_check_alpha, 'id']
+                        if index != index_check_alpha:
+                            if temp_node_id == node_id and new_node_df.at[index_check_alpha, 'Alpha'] != 'None':
+                                # Update the existing Alpha value
+                                new_beta_value = new_node_df.at[index_check_alpha, 'Alpha']
+                                # Update the selected node's Beta value
+                                new_node_df.at[index, 'Alpha'] = new_beta_value
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+                            # Beta value has been updates already so drop the rest of the duplicates
+                            elif temp_node_id == node_id and new_node_df.at[index, 'Alpha'] != 'None':
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+
+            # If the node isn't order=1 i.e reason is Presentation
+            else:
+                # If node's Alpha and beta values both exist
+                if node_alpha == 'Alpha' and node_beta == 'Beta':
+                    # Remove duplicates and keep only the first occurrence of the node
+                    new_node_df = new_node_df.drop_duplicates(subset='id')
+                # If node's Beta value isn't found
+                if node_alpha == 'Alpha' and node_beta == 'None':
+                    for index_check_beta, row in new_node_df.iterrows():
+                        temp_node_id = new_node_df.at[index_check_beta, 'id']
+                        if index != index_check_beta:
+                            print(index)
+                            print(index_check_beta)
+                            if temp_node_id == node_id and new_node_df.at[index_check_beta, 'Beta'] != 'None':
+                                # Update the existing Beta value
+                                new_beta_value = new_node_df.at[index_check_beta, 'Beta']
+                                # Update the selected node's Beta value
+                                new_node_df.at[index, 'Beta'] = new_beta_value
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+                            # Beta value has been updates already so drop the rest of the duplicates
+                            elif temp_node_id == node_id and new_node_df.at[index, 'Beta'] != 'None':
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+
+                # If node's Alpha value isn't found
+                if node_alpha == 'None' and node_beta == 'Beta':
+                    for index_check_alpha, row in new_node_df.iterrows():
+                        temp_node_id = new_node_df[index_check_alpha, 'id']
+                        if index != index_check_alpha:
+                            if temp_node_id == node_id and new_node_df.at[index_check_alpha, 'Alpha'] != 'None':
+                                # Update the existing Alpha value
+                                new_beta_value = new_node_df.at[index_check_alpha, 'Alpha']
+                                # Update the selected node's Beta value
+                                new_node_df.at[index, 'Alpha'] = new_beta_value
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+                            # Beta value has been updates already so drop the rest of the duplicates
+                            elif temp_node_id == node_id and new_node_df.at[index, 'Alpha'] != 'None':
+                                new_node_df.drop(labels=temp_node_id, axis=0)
+
+        print(new_node_df)
         return new_node_df
 
     # Method to check edge duplicates
