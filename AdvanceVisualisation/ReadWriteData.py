@@ -56,7 +56,17 @@ class ReadWriteData:
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
-        node_df = pd.DataFrame(columns=['id', 'name', 'order', 'input type'])
+        node_df = pd.DataFrame(columns=['id', 'name', 'order', 'Alpha', 'Beta', 'reason to exist'])
+
+        # Determine the input type
+        new_alpha = ''
+        new_beta = ''
+        if input_type == 'Alpha':
+            new_alpha = 'Alpha'
+            new_beta = 'None'
+        else:
+            new_alpha = 'None'
+            new_beta = 'Beta'
 
         # Loop through each row
         # Get the cell values of each column of each row and concat the values
@@ -65,40 +75,54 @@ class ReadWriteData:
             for i in range(int_order):
                 # Get the single SNPs at the specific position
                 cell_value = df.iat[index, i + 1]
+                new_order = '1'
+
+                # Determine if the node comes from order=1 or an interaction node
+                reason = ''
+                if int_order == 1:
+                    reason = 'Important'
+                else:
+                    reason = 'Presentation'
+
                 # Add a cell value to the new DataFrame
                 node_df = node_df.append(pd.DataFrame
-                                         ([[cell_value + "_" + input_type, cell_value + "_" + input_type, order,
-                                            input_type]],
-                                          columns=['id', 'name', 'order', 'input type']),
+                                         ([[cell_value, cell_value, new_order, new_alpha, new_beta, reason]],
+                                          columns=['id', 'name', 'order', 'Alpha', 'Beta', 'reason to exist']),
                                          ignore_index=True)
-                if (i + 1) >= 2:
-                    new_cell_value = ''
-                    if (i + 1) == 2:
-                        snp_a_cell_value = df.iat[index, i]
-                        new_cell_value = str(snp_a_cell_value) + str(cell_value)
+            if int_order >= 2:
+                new_cell_value = ''
+                new_order = ''
+                if int_order == 2:
+                    snp_b_cell_value = df.at[index, 'SNP_B']
+                    snp_a_cell_value = df.at[index, 'SNP_A']
+                    new_order = '2'
+                    new_cell_value = str(snp_a_cell_value) + str(snp_b_cell_value)
 
-                    elif (i + 1) == 3:
-                        snp_b_cell_value = df.iat[index, i]
-                        snp_a_cell_value = df.iat[index, i - 1]
-                        new_cell_value = str(snp_a_cell_value) \
-                                         + str(snp_b_cell_value) + str(cell_value)
+                elif int_order == 3:
+                    snp_c_cell_value = df.at[index, 'SNP_C']
+                    snp_b_cell_value = df.at[index, 'SNP_B']
+                    snp_a_cell_value = df.at[index, 'SNP_A']
+                    new_order = '3'
+                    new_cell_value = str(snp_a_cell_value) \
+                                     + str(snp_b_cell_value) + str(snp_c_cell_value)
 
-                    elif (i + 1) == 4:
-                        snp_c_cell_value = df.iat[index, i]
-                        snp_b_cell_value = df.iat[index, i - 1]
-                        snp_a_cell_value = df.iat[index, i - 2]
-                        new_cell_value = str(snp_a_cell_value) + str(snp_b_cell_value) \
-                                         + str(snp_c_cell_value) + str(
-                            cell_value)
+                elif int_order == 4:
+                    snp_d_cell_value = df.at[index, 'SNP_D']
+                    snp_c_cell_value = df.at[index, 'SNP_C']
+                    snp_b_cell_value = df.at[index, 'SNP_B']
+                    snp_a_cell_value = df.at[index, 'SNP_A']
+                    new_order = '4'
+                    new_cell_value = str(snp_a_cell_value) + str(snp_b_cell_value) \
+                                     + str(snp_c_cell_value) + str(snp_d_cell_value)
 
-                        # Add a cell value to the new DataFrame
-                    node_df = node_df.append \
+                    # Add a cell value to the new DataFrame
+                node_df = node_df.append \
                         (pd.DataFrame(
-                            [[new_cell_value + "_" + input_type, new_cell_value + "_" + input_type, order, input_type]],
-                            columns=['id', 'name', 'order', 'input type']),
-                         ignore_index=True)
+                        [[new_cell_value, new_cell_value, new_order, new_alpha, new_beta, reason]],
+                        columns=['id', 'name', 'order', 'Alpha', 'Beta', 'reason to exist']),
+                        ignore_index=True)
 
-        # print(node_df)
+        print(node_df)
         return node_df
 
     # Method to create the edge DataFrame
@@ -139,9 +163,9 @@ class ReadWriteData:
                                    + str(snp_c_cell_value) + str(snp_d_cell_value)
 
                         # Add the new edge-node pair to the DataFrame
-                        edge_df = edge_df.append(pd.DataFrame([[edge_value + "_" + input_type, node + "_" + input_type,
-                                                                edge_value + "_" + input_type,
-                                                                node + "_" + input_type]],
+                        edge_df = edge_df.append(pd.DataFrame([[edge_value, node,
+                                                                edge_value,
+                                                                node]],
                                                               columns=['id', 'source', 'target', 'interaction']),
                                                  ignore_index=True)
 

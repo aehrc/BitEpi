@@ -86,14 +86,6 @@ class CytoscapeIntegration:
         my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
                                          mappings=order_key_value_pair)
 
-        type_key_value_pair = {
-            'Alpha': '25.0',
-            'Beta': '35.0'
-        }
-
-        my_style.create_discrete_mapping(column='input type', col_type='String', vp='NODE_SIZE',
-                                         mappings=type_key_value_pair)
-
         cy.style.apply(my_style, node_edge_network)
 
         cy.layout.fit(network=node_edge_network)
