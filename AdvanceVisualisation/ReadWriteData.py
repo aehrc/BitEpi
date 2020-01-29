@@ -175,19 +175,10 @@ class ReadWriteData:
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
 
-        # out2.Alpha.3.csv
-        # out2.Beta.2.csv
-        # out2.Alpha.1.csv
-        print('______________________________________________________________')
-        print(node_df)
-        print('__________')
         # Create a new node DataFrame with the non-duplicated nodes
         new_node_df = pd.concat([node_df, existing_df], axis=0).reset_index(drop=True)
-        print(new_node_df)
-        print('__________')
         # Remove duplicates and keep only the node from order=1 or the original node
         i = len(new_node_df) - 1
-        print('i', i)
         for index, row in new_node_df.iterrows():
 
             # Get all the duplicates of a specific id at an index
@@ -195,28 +186,21 @@ class ReadWriteData:
             # Loop through them and look for the specific conditions and drop others
             temp_node = new_node_df.at[i, 'id']
             temp_df = new_node_df.loc[new_node_df['id'] == temp_node]
-            print('i', i)
-            print('length new node df: ', len(new_node_df))
             found = False
+
             if not found:
                 temp_node_important = temp_df.loc[temp_df['reason to exist'] == 'Important']
                 # Not important
                 if temp_node_important.empty:
-                    print('PRESENTATION')
                     found_both_alpha_and_beta = temp_df.loc[(temp_df['Alpha'] == 'Alpha')
                                                             & (temp_df['Beta'] == 'Beta')]
                     # Both Alpha and Beta together aren't present
                     if found_both_alpha_and_beta.empty:
                         found_only_alpha = temp_df.loc[temp_df['Alpha'] == 'Alpha'].reset_index(drop=True)
-                        print('found alphas')
-                        print(found_only_alpha)
                         found_only_beta = temp_df.loc[temp_df['Beta'] == 'Beta'].reset_index(drop=True)
-                        print('found beta')
-                        print(found_only_beta)
 
                         # There exists rows with either one of Alpha or Beta values
                         if (not found_only_alpha.empty) and (not found_only_beta.empty):
-                            print("___________________CHECK 1 ________________________")
                             # Get the first alpha row and the first beta row
                             beta_value = found_only_beta.at[0, 'Beta']
                             # Add the Beta row to the Alpha row
@@ -226,73 +210,52 @@ class ReadWriteData:
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
                         # If only Alpha values were present
                         elif (not found_only_alpha.empty) and found_only_beta.empty:
-                            print("___________________CHECK 2 ________________________")
-
                             # Create a new row and delete others
                             new_cell = found_only_alpha.head(1)
-                            print('new cell ', new_cell)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
-                            print(new_node_df)
-                            print('__')
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
-                            print(new_node_df)
                             found = True
                         # If only Beta values were found
                         elif found_only_alpha.empty and (not found_only_beta.empty):
-                            print("___________________CHECK 3 ________________________")
                             # Create a new row and delete others
                             new_cell = found_only_beta.head(1)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
                         # Both aren't present
                         else:
-                            print("___________________CHECK 4 ________________________")
                             new_cell = temp_df.head(1)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
 
                     # Both Alpha and Beta are present for Presentation cell
                     else:
-                        print("___________________CHECK 5 ________________________")
                         new_cell = found_both_alpha_and_beta.head(1)
                         new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                         new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                         i = i - len(temp_df)
-                        print('new i: ', i)
                         found = True
 
                 # Important
                 else:
-                    print('IMPORTANT')
                     found_both_alpha_and_beta = temp_df.loc[(temp_df['Alpha'] == 'Alpha')
                                                             & (temp_df['Beta'] == 'Beta')]
                     # Both Alpha and Beta together aren't present
                     if found_both_alpha_and_beta.empty:
                         found_only_alpha = temp_df.loc[temp_df['Alpha'] == 'Alpha'].reset_index(drop=True)
-                        print('alpha found')
-                        print(found_only_alpha)
                         found_only_beta = temp_df.loc[temp_df['Beta'] == 'Beta'].reset_index(drop=True)
-                        print('beta found')
-                        print(found_only_beta)
 
                         # There exists rows with either one of Alpha or Beta values
                         if (not found_only_alpha.empty) and (not found_only_beta.empty):
-                            print("___________________CHECK 6 ________________________")
                             # Get the first alpha row and the first beta row
                             beta_value = found_only_beta.at[0, 'Beta']
-                            print(beta_value)
                             # Add the Beta row to the Alpha row
                             found_only_alpha.iloc[0, found_only_alpha.columns.get_loc('Beta')] = beta_value
                             # Create a new row and delete others
@@ -300,48 +263,38 @@ class ReadWriteData:
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
                         # If only Alpha values were present
                         elif (not found_only_alpha.empty) and found_only_beta.empty:
-                            print("___________________CHECK 7 ________________________")
                             # Create a new row and delete others
                             new_cell = found_only_alpha.head(1)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
                         # If only Beta values were found
                         elif found_only_alpha.empty and (not found_only_beta.empty):
-                            print("___________________CHECK 8 ________________________")
                             # Create a new row and delete others
                             new_cell = found_only_beta.head(1)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
                         # Both aren't present
                         else:
-                            print("___________________CHECK 9 ________________________")
                             new_cell = temp_df.head(0)
                             new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                             new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                             i = i - len(temp_df)
-                            print('new i: ', i)
                             found = True
 
-                        # Both Alpha and Beta are present for Presentation cell
+                    # Both Alpha and Beta are present for Presentation cell
                     else:
-                        print("___________________CHECK 10 ________________________")
                         new_cell = found_both_alpha_and_beta.head(1)
                         new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
                         new_node_df = pd.concat([new_node_df, new_cell], axis=0).reset_index(drop=True)
                         i = i - len(temp_df)
-                        print('new i: ', i)
                         found = True
-                print('_______________________________________________________')
                 # exit for loop once the correct new_node_df is made
                 if index == len(new_node_df) - 1:
                     break
