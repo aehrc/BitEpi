@@ -174,98 +174,130 @@ class ReadWriteData:
 
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
+
+        # out2.Alpha.3.csv
+        # out2.Beta.2.csv
+        # out2.Alpha.1.csv
+
         # Create a new node DataFrame with the non-duplicated nodes
         new_node_df = pd.concat([node_df, existing_df], axis=0).reset_index(drop=True)
-        print(new_node_df)
         # Remove duplicates and keep only the node from order=1 or the original node
         for index, row in new_node_df.iterrows():
-            # Get id of the node
-            # Check if important or not
-            # Check if the Alpha and Beta values exist
-            node_id = new_node_df.at[index, 'id']
-            node_important = new_node_df.at[index, 'reason to exist']
-            node_alpha = new_node_df.at[index, 'Alpha']
-            node_beta = new_node_df.at[index, 'Beta']
+            # Get all the duplicates of a specific id at an index
+            # Filter all the rows which has that id
+            # Loop through them and look for the specific conditions and drop others
 
-            # If the important version of the node exists
-            if node_important == 'Important':
-                # If node's Alpha and beta values both exist
-                if node_alpha == 'Alpha' and node_beta == 'Beta':
-                    for index_check_all, row in new_node_df.iterrows():
-                        # Check if the index doesn't match the selected node
-                        if index != index_check_all:
-                            temp_node_id = new_node_df[index_check_all, 'id']
-                            if temp_node_id == node_id and (new_node_df.at[index_check_all, 'Beta'] == 'None' or
-                                                            new_node_df.at[index_check_all, 'Alpha'] == 'None'):
-                                new_node_df.drop(labels=temp_node_id, axis=0)
+            temp_node = new_node_df.at[index, 'id']
+            temp_df = new_node_df.loc[new_node_df['id'] == temp_node]
+            found = False
+            if not found:
+                temp_node_important = temp_df.loc[temp_df['reason to exist'] == 'Important']
+                # Not important
+                if temp_node_important.empty:
+                    found_both_alpha_and_beta = temp_df.loc[(temp_df['Alpha'] == 'Alpha')
+                                                            & (temp_df['Beta'] == 'Beta')]
+                    # Both Alpha and Beta together aren't present
+                    if found_both_alpha_and_beta.empty:
+                        found_only_alpha = temp_df.loc[temp_df['Alpha'] == 'Alpha']
+                        found_only_beta = temp_df.loc[temp_df['Beta'] == 'Beta']
 
-                # If node's Beta value isn't found
-                if node_alpha == 'Alpha' and node_beta == 'None':
-                    for index_check_beta, row in new_node_df.iterrows():
-                        temp_node_id = new_node_df[index_check_beta, 'id']
-                        if index != index_check_beta:
-                            if temp_node_id == node_id and new_node_df.at[index_check_beta, 'Beta'] != 'None':
-                                # Update the existing Beta value
-                                new_beta_value = new_node_df.at[index_check_beta, 'Beta']
-                                # Update the selected node's Beta value
-                                new_node_df.at[index, 'Beta'] = new_beta_value
-                                new_node_df.drop(labels=temp_node_id, axis=0)
-                            # Beta value has been updates already so drop the rest of the duplicates
-                            elif temp_node_id == node_id and new_node_df.at[index, 'Beta'] != 'None':
-                                new_node_df.drop(labels=temp_node_id, axis=0)
+                        # There exists rows with either one of Alpha or Beta values
+                        if (not found_only_alpha.empty) and (not found_only_beta.empty):
+                            # Get the first alpha row and the first beta row
+                            beta_value = found_only_beta.at[0, 'Beta']
+                            # Add the Beta row to the Alpha row
+                            found_only_alpha.iloc[0, found_only_alpha.columns.get_loc('Beta')] = beta_value
+                            # Create a new row and delete others
+                            new_cell = found_only_alpha.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # If only Alpha values were present
+                        elif (not found_only_alpha.empty) and found_only_beta.empty:
+                            # Create a new row and delete others
+                            new_cell = found_only_alpha.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # If only Beta values were found
+                        elif found_only_alpha.empty and (not found_only_beta.empty):
+                            # Create a new row and delete others
+                            new_cell = found_only_beta.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # Both aren't present
+                        else:
+                            new_cell = temp_df.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
 
-                # If node's Alpha value isn't found
-                if node_alpha == 'None' and node_beta == 'Beta':
-                    for index_check_alpha, row in new_node_df.iterrows():
-                        temp_node_id = new_node_df[index_check_alpha, 'id']
-                        if index != index_check_alpha:
-                            if temp_node_id == node_id and new_node_df.at[index_check_alpha, 'Alpha'] != 'None':
-                                # Update the existing Alpha value
-                                new_beta_value = new_node_df.at[index_check_alpha, 'Alpha']
-                                # Update the selected node's Beta value
-                                new_node_df.at[index, 'Alpha'] = new_beta_value
-                                new_node_df.drop(labels=temp_node_id, axis=0)
-                            # Beta value has been updates already so drop the rest of the duplicates
-                            elif temp_node_id == node_id and new_node_df.at[index, 'Alpha'] != 'None':
-                                new_node_df.drop(labels=temp_node_id, axis=0)
+                    # Both Alpha and Beta are present for Presentation cell
+                    else:
+                        new_cell = found_both_alpha_and_beta.head(1)
+                        new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                        new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                        found = True
 
-            # If the node isn't order=1 i.e reason is Presentation
+                # Important
+                else:
+                    found_both_alpha_and_beta = temp_df.loc[(temp_df['Alpha'] == 'Alpha')
+                                                            & (temp_df['Beta'] == 'Beta')]
+                    # Both Alpha and Beta together aren't present
+                    if found_both_alpha_and_beta.empty:
+                        found_only_alpha = temp_df.loc[temp_df['Alpha'] == 'Alpha']
+                        found_only_beta = temp_df.loc[temp_df['Beta'] == 'Beta']
+
+                        # There exists rows with either one of Alpha or Beta values
+                        if (not found_only_alpha.empty) and (not found_only_beta.empty):
+                            # Get the first alpha row and the first beta row
+                            beta_value = found_only_beta.at[0, 'Beta']
+                            # Add the Beta row to the Alpha row
+                            found_only_alpha.iloc[0, found_only_alpha.columns.get_loc('Beta')] = beta_value
+                            # Create a new row and delete others
+                            new_cell = found_only_alpha.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # If only Alpha values were present
+                        elif (not found_only_alpha.empty) and found_only_beta.empty:
+                            # Create a new row and delete others
+                            new_cell = found_only_alpha.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # If only Beta values were found
+                        elif found_only_alpha.empty and (not found_only_beta.empty):
+                            # Create a new row and delete others
+                            new_cell = found_only_beta.head(1)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+                        # Both aren't present
+                        else:
+                            new_cell = temp_df.head(0)
+                            new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                            new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                            found = True
+
+                        # Both Alpha and Beta are present for Presentation cell
+                    else:
+                        new_cell = found_both_alpha_and_beta.head(1)
+                        new_node_df = new_node_df.loc[new_node_df['id'] != temp_node]
+                        new_node_df = pd.concat([new_node_df, new_cell], axis=0)
+                        found = True
+                print(new_node_df)
+                print(len(new_node_df))
+                print(index)
+
+                if index == len(new_node_df) - 1:
+                    print('End')
+                    break
+                print('_____________________________________________')
+            # Major error coz important and other values aren't found
             else:
-                # If node's Alpha and beta values both exist
-                if node_alpha == 'Alpha' and node_beta == 'Beta':
-                    # Remove duplicates and keep only the first occurrence of the node
-                    new_node_df = new_node_df.drop_duplicates(subset='id')
-                # If node's Beta value isn't found
-                if node_alpha == 'Alpha' and node_beta == 'None':
-                    for index_check_beta, row in new_node_df.iterrows():
-                        temp_node_id = new_node_df.at[index_check_beta, 'id']
-                        if index != index_check_beta:
-                            print(index)
-                            print(index_check_beta)
-                            if temp_node_id == node_id and new_node_df.at[index_check_beta, 'Beta'] != 'None':
-                                # Update the existing Beta value
-                                new_beta_value = new_node_df.at[index_check_beta, 'Beta']
-                                # Update the selected node's Beta value
-                                new_node_df.at[index, 'Beta'] = new_beta_value
-                                new_node_df.drop(labels=temp_node_id, axis=0)
-                            # Beta value has been updates already so drop the rest of the duplicates
-                            elif temp_node_id == node_id and new_node_df.at[index, 'Beta'] != 'None':
-                                new_node_df.drop(labels=temp_node_id, axis=0)
-
-                # If node's Alpha value isn't found
-                if node_alpha == 'None' and node_beta == 'Beta':
-                    for index_check_alpha, row in new_node_df.iterrows():
-                        temp_node_id = new_node_df[index_check_alpha, 'id']
-                        if index != index_check_alpha:
-                            if temp_node_id == node_id and new_node_df.at[index_check_alpha, 'Alpha'] != 'None':
-                                # Update the existing Alpha value
-                                new_beta_value = new_node_df.at[index_check_alpha, 'Alpha']
-                                # Update the selected node's Beta value
-                                new_node_df.at[index, 'Alpha'] = new_beta_value
-                                new_node_df.drop(labels=temp_node_id, axis=0)
-                            # Beta value has been updates already so drop the rest of the duplicates
-                            elif temp_node_id == node_id and new_node_df.at[index, 'Alpha'] != 'None':
-                                new_node_df.drop(labels=temp_node_id, axis=0)
+                print('Abort mission: Duplicates found!')
 
         print(new_node_df)
         return new_node_df
