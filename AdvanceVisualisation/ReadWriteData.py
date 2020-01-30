@@ -12,7 +12,6 @@ class ReadWriteData:
 
     # Method to validate the input file
     def validate_input_file(self):
-        # prefix = ''
         global order
         global input_type
         first_job_index = ''
@@ -172,12 +171,12 @@ class ReadWriteData:
         # print(edge_df)
         return edge_df
 
-    def create_connection_count_df(self, edge_df):
+    # Method to get the number of interaction nodes connected to a node
+    def create_connection_count_df(self, correct_edge_df):
         connection_count_df = pd.DataFrame(columns=['id', 'count'])
-
-        for index, row in edge_df.iterrows():
-            temp_node = edge_df.at[index, 'target']
-            count = str(edge_df.loc[edge_df.target == temp_node, 'target'].count())
+        for index, row in correct_edge_df.iterrows():
+            temp_node = correct_edge_df.at[index, 'target']
+            count = str(correct_edge_df.loc[correct_edge_df.target == temp_node, 'target'].count())
             connection_count_df = connection_count_df.append(pd.DataFrame([[temp_node, count]]
                                                                           , columns=['id', 'count'])
                                                              , ignore_index=True)
@@ -186,8 +185,7 @@ class ReadWriteData:
 
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
-
-        # Delete the count column of the existing dataframe as it will be merged later
+        # Delete the count column of the existing DataFrame as it will be merged later
         if 'count' in existing_df.columns:
             existing_df = existing_df.drop('count', axis=1)
         # Create a new node DataFrame with the non-duplicated nodes
@@ -195,12 +193,10 @@ class ReadWriteData:
         # Remove duplicates and keep only the node from order=1 or the original node
         i = len(new_node_df) - 1
         for index, row in new_node_df.iterrows():
-
             # Get all the duplicates of a specific id at an index
             # Filter all the rows which has that id
             # Loop through them and look for the specific conditions and drop others
             temp_node = new_node_df.at[i, 'id']
-
             new_order = ''
             temp_df = new_node_df.loc[new_node_df['id'] == temp_node]
             found = False
@@ -439,6 +435,13 @@ class ReadWriteData:
         new_edge_df = temp_edge_df.drop_duplicates(subset=['target', 'source', 'id'], keep='first')
         return new_edge_df
 
+    def get_merged_new_node_df(self, new_node_df, connection_count_df):
+        if order != '1':
+            new_node_df = new_node_df.merge(connection_count_df, how='left')
+            new_node_df['count'].fillna('None', inplace=True)
+
+        return new_node_df
+
     # Method to write data in the correct format to csv files
     def write_data_to_csv(self, node_df, edge_df, int_order):
         data_written_to_csv = True
@@ -479,8 +482,7 @@ class ReadWriteData:
         if not os.path.isfile(node_file_path):
             print('No existing node file found. Creating a new file nodes.csv')
             new_node_df = self.check_node_duplicates(node_df, node_df)
-            new_node_df = new_node_df.merge(connection_count_df, how='left')
-            new_node_df['count'].fillna('None', inplace=True)
+            new_node_df = self.get_merged_new_node_df(new_node_df, connection_count_df)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = new_node_df
         else:
@@ -489,8 +491,7 @@ class ReadWriteData:
             existing_df = pd.read_csv(node_file_path)
             # Get a new DataFrame without any duplicated nodes
             new_node_df = self.check_node_duplicates(node_df, existing_df)
-            new_node_df = new_node_df.merge(connection_count_df, how='left')
-            new_node_df['count'].fillna('None', inplace=True)
+            new_node_df = self.get_merged_new_node_df(new_node_df, connection_count_df)
             os.remove(node_file_path)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = new_node_df
@@ -501,7 +502,6 @@ class ReadWriteData:
         return data_written
 
     # Method to read in data and write data from and to a csv file
-    # TODO rename this function
     def read_data_from_csv(self):
         read_write_done = True
 
@@ -523,7 +523,6 @@ class ReadWriteData:
                 print('Error the newly created DataFrames are empty.')
             else:
                 data_written = self.write_data_to_csv(node_df, edge_df, int_order)
-
                 if not data_written[2]:
                     read_write_done = False
                     print('Error could not write data to the csv file/s!')
