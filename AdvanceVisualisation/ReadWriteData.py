@@ -172,9 +172,24 @@ class ReadWriteData:
         # print(edge_df)
         return edge_df
 
+    def create_connection_count_df(self, edge_df):
+        connection_count_df = pd.DataFrame(columns=['id', 'count'])
+
+        for index, row in edge_df.iterrows():
+            temp_node = edge_df.at[index, 'target']
+            count = str(edge_df.loc[edge_df.target == temp_node, 'target'].count())
+            connection_count_df = connection_count_df.append(pd.DataFrame([[temp_node, count]]
+                                                                          , columns=['id', 'count'])
+                                                             , ignore_index=True)
+        connection_count_df = connection_count_df.drop_duplicates(subset=['id'], keep='first')
+        return connection_count_df
+
     # Method to check for duplicate nodes in the existing file and new DataFrame
     def check_node_duplicates(self, node_df, existing_df):
 
+        # Delete the count column of the existing dataframe as it will be merged later
+        if 'count' in existing_df.columns:
+            existing_df = existing_df.drop('count', axis=1)
         # Create a new node DataFrame with the non-duplicated nodes
         new_node_df = pd.concat([node_df, existing_df], axis=0).reset_index(drop=True)
         # Remove duplicates and keep only the node from order=1 or the original node
@@ -185,18 +200,21 @@ class ReadWriteData:
             # Filter all the rows which has that id
             # Loop through them and look for the specific conditions and drop others
             temp_node = new_node_df.at[i, 'id']
+
             new_order = ''
             temp_df = new_node_df.loc[new_node_df['id'] == temp_node]
             found = False
 
             if not found:
-                temp_node_important = temp_df.loc[temp_df['reason to exist'] == 'Important']
-                temp_node_presentation = temp_df.loc[temp_df['reason to exist'] == 'Presentation']
+                temp_node_important = temp_df.loc[temp_df['reason to exist'] == 'Important'].reset_index(drop=True)
+                temp_node_presentation = temp_df.loc[temp_df['reason to exist'] == 'Presentation'].reset_index(
+                    drop=True)
 
                 # Not important i.e presentation
                 if temp_node_important.empty:
                     found_both_alpha_and_beta = temp_node_presentation.loc[(temp_node_presentation['Alpha'] == 'Alpha')
-                                                                           & (temp_node_presentation['Beta'] == 'Beta')]
+                                                                           & (temp_node_presentation['Beta'] == 'Beta')] \
+                        .reset_index(drop=True)
                     new_reason = 'Presentation'
                     # Both Alpha and Beta together aren't present
                     if found_both_alpha_and_beta.empty:
@@ -300,17 +318,18 @@ class ReadWriteData:
                 # Important
                 else:
                     found_both_alpha_and_beta = temp_node_important.loc[(temp_node_important['Alpha'] == 'Alpha')
-                                                                        & (temp_node_important['Beta'] == 'Beta')]
+                                                                        & (temp_node_important['Beta'] == 'Beta')] \
+                        .reset_index(drop=True)
                     new_reason = 'Important'
 
                     # Both Alpha and Beta together aren't present
                     if found_both_alpha_and_beta.empty:
                         found_only_alpha = temp_df.loc[(temp_df['Alpha'] == 'Alpha')
                                                        & (temp_df['reason to exist'] == 'Important')].reset_index(
-                            drop=True)
+                            drop=True).reset_index(drop=True)
                         found_only_beta = temp_df.loc[(temp_df['Beta'] == 'Beta')
                                                       & (temp_df['reason to exist'] == 'Important')].reset_index(
-                            drop=True)
+                            drop=True).reset_index(drop=True)
 
                         # There exists rows with either one of Alpha or Beta values
                         if (not found_only_alpha.empty) and (not found_only_beta.empty):
@@ -408,8 +427,8 @@ class ReadWriteData:
             else:
                 print('Abort mission: Duplicates found!')
 
-        print(new_node_df)
-        print('_______________________________________________________________________________________')
+        # print(new_node_df)
+        # print('_______________________________________________________________________________________')
         return new_node_df
 
     # Method to check edge duplicates
@@ -435,21 +454,6 @@ class ReadWriteData:
         # Check if files exist
         # Create a new file if there is no existing one
         # If exists then append to the existing file
-        if not os.path.isfile(node_file_path):
-            print('No existing node file found. Creating a new file nodes.csv')
-            new_node_df = self.check_node_duplicates(node_df, node_df)
-            new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
-            correct_node_df = new_node_df
-        else:
-            print('Existing node file found. Appending to node.csv')
-            # Read in the existing DataFrame and check for duplicates
-            existing_df = pd.read_csv(node_file_path)
-            # Get a new DataFrame without any duplicated nodes
-            new_node_df = self.check_node_duplicates(node_df, existing_df)
-            os.remove(node_file_path)
-            new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
-            correct_node_df = new_node_df
-
         if not os.path.isfile(edge_file_path):
             print('No existing edges file found. Creating a new file edges.csv')
             edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
@@ -460,14 +464,36 @@ class ReadWriteData:
             existing_df = pd.read_csv(edge_file_path)
             if existing_df.empty:
                 print('The existing file is empty. Creating a new file edges.csv')
-                edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
-                correct_edge_df = edge_df
+                new_edge_df = self.check_edge_duplicates(edge_df, edge_df)
+                new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
+                correct_edge_df = new_edge_df
             else:
                 # Get a new DataFrame without any duplicated edges
                 new_edge_df = self.check_edge_duplicates(edge_df, existing_df)
                 os.remove(edge_file_path)
                 new_edge_df.to_csv(edge_file_path, encoding='utf-8', index=False)
                 correct_edge_df = new_edge_df
+
+        connection_count_df = self.create_connection_count_df(correct_edge_df)
+
+        if not os.path.isfile(node_file_path):
+            print('No existing node file found. Creating a new file nodes.csv')
+            new_node_df = self.check_node_duplicates(node_df, node_df)
+            new_node_df = new_node_df.merge(connection_count_df, how='left')
+            new_node_df['count'].fillna('None', inplace=True)
+            new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
+            correct_node_df = new_node_df
+        else:
+            print('Existing node file found. Appending to node.csv')
+            # Read in the existing DataFrame and check for duplicates
+            existing_df = pd.read_csv(node_file_path)
+            # Get a new DataFrame without any duplicated nodes
+            new_node_df = self.check_node_duplicates(node_df, existing_df)
+            new_node_df = new_node_df.merge(connection_count_df, how='left')
+            new_node_df['count'].fillna('None', inplace=True)
+            os.remove(node_file_path)
+            new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
+            correct_node_df = new_node_df
 
         # Send the DataFrames (which were checked for duplication) to Cytoscape
         data_written = [correct_node_df, correct_edge_df, data_written_to_csv]
