@@ -176,6 +176,7 @@ class ReadWriteData:
         connection_count_df = pd.DataFrame(columns=['id', 'count'])
         for index, row in correct_edge_df.iterrows():
             temp_node = correct_edge_df.at[index, 'target']
+            # TODO Lengths must match to compare??
             count = str(correct_edge_df.loc[correct_edge_df.target == temp_node, 'target'].count())
             connection_count_df = connection_count_df.append(pd.DataFrame([[temp_node, count]]
                                                                           , columns=['id', 'count'])
