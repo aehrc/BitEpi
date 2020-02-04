@@ -1,8 +1,8 @@
 #!/bin/bash
 
 VcfFile=$1          # Pass to the VCF file
-SampleAnnot=$2      # Pass to the sample annotation file
-isCase=$3           # the column number in sample annotation file that has the isCase (True/False)
+SampleAnnot=$2      # Pass to the sample annotation.csv file
+isCase=$3           # the column number in sample annotation.csv file that has the isCase (True/False)
 
 echo "=============================================================="
 

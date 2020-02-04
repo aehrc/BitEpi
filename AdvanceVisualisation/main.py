@@ -2,6 +2,7 @@ import argparse
 
 from ReadWriteData import ReadWriteData
 from CytoscapeIntegration import CytoscapeIntegration
+from FormGUI import FormGUI
 
 
 def main():
@@ -14,6 +15,10 @@ def main():
     read_write_data = ReadWriteData(input_file)
     valid = read_write_data.validate_input_file()
     if valid:
+        print("Accessing the form for user input")
+        form = FormGUI()
+        form.form()
+
         print('The input file, {}, has been successfully validated.'
               .format(input_file))
         read_write_done = read_write_data.read_data_from_csv()
