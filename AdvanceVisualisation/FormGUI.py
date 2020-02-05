@@ -8,9 +8,15 @@ class FormGUI:
 
     # Load file upon clicking submit on the GUI
     def load_files(self, input_file, annotation_file):
-        print('______________ ', input_file, '____', annotation_file)
-        self.controller.validate_input_files(input_file, annotation_file)
-        return True
+        valid = self.controller.validate_input_files(input_file, annotation_file)
+
+        if valid:
+            print('The input file, {}, has been successfully validated.'
+                  .format(input_file))
+            return True
+        else:
+            print('Error found in input file format.')
+            return False
 
     # Method to create the form
     def form(self):
@@ -123,3 +129,5 @@ class FormGUI:
         submit_button.place(relx=0.3, rely=0.9, relheight=0.075, relwidth=0.35)
 
         root.mainloop()
+
+        print('_', node_colour_variable.get())
