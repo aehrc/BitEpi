@@ -3,6 +3,13 @@ import argparse
 from ReadWriteData import ReadWriteData
 from CytoscapeIntegration import CytoscapeIntegration
 from FormGUI import FormGUI
+from Controller import Controller
+
+
+def gui_main():
+    print("Accessing the controller")
+    controller = Controller()
+    controller.create_form()
 
 
 def main():
@@ -15,10 +22,6 @@ def main():
     read_write_data = ReadWriteData(input_file)
     valid = read_write_data.validate_input_file()
     if valid:
-        print("Accessing the form for user input")
-        form = FormGUI()
-        form.form()
-
         print('The input file, {}, has been successfully validated.'
               .format(input_file))
         read_write_done = read_write_data.read_data_from_csv()
@@ -43,4 +46,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    gui_main()
+# main()
