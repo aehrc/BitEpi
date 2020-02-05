@@ -79,7 +79,31 @@ class FormGUI:
         filter_frame = tk.Frame(root, bg='#696969', bd=5)
         filter_frame.place(relx=0.74, rely=0.21, relwidth=0.468, relheight=0.65, anchor='n')
 
-        button = tk.Button(root, text="Submit", font=24)
-        button.place(relx=0.35, rely=0.9, relheight=0.075, relwidth=0.35)
+        filter_frame_title = tk.Label(filter_frame, bg='#696969', text='Specify how you would like to filter!')
+        filter_frame_title.place(relx=0.04, rely=0.05, relheight=0.1, relwidth=0.95)
+
+        filter_entry = tk.Entry(filter_frame, font=24)
+        filter_entry.place(relx=0.05, rely=0.2, relwidth=0.9, relheight=0.3)
+
+        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide")
+        hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
+
+        show_button = tk.Button(filter_frame, bg='#808080', text="Show")
+        show_button.place(relx=0.525, rely=0.55, relheight=0.1, relwidth=0.45)
+
+        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight")
+        hl_button.place(relx=0.04, rely=0.7, relheight=0.1, relwidth=0.45)
+
+        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out")
+        gray_button.place(relx=0.525, rely=0.7, relheight=0.1, relwidth=0.45)
+
+        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset")
+        reset_button.place(relx=0.04, rely=0.85, relheight=0.1, relwidth=0.45)
+
+        help_button = tk.Button(filter_frame, bg='#808080', text="Help")
+        help_button.place(relx=0.525, rely=0.85, relheight=0.1, relwidth=0.45)
+
+        submit_button = tk.Button(root, text="Submit", font=24)
+        submit_button.place(relx=0.35, rely=0.9, relheight=0.075, relwidth=0.35)
 
         root.mainloop()
