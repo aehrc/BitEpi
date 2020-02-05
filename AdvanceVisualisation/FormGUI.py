@@ -12,7 +12,6 @@ class FormGUI:
         self.highlight_bool = False
         self.gray_bool = False
         self.reset_bool = False
-        print("Inside GUI")
 
     # Load file upon clicking submit on the GUI
     def load_files(self, input_file, annotation_file):

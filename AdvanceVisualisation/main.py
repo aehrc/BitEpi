@@ -7,7 +7,6 @@ from Controller import Controller
 
 
 def gui_main():
-    print("Accessing the controller")
     controller = Controller()
     controller.create_form()
 
@@ -47,4 +46,4 @@ def main():
 
 if __name__ == '__main__':
     gui_main()
-# main()
+    # main()

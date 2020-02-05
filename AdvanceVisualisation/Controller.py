@@ -24,8 +24,32 @@ class Controller:
             return False
 
     def create_form(self):
-        print('inside create form')
         controller = Controller()
         form = FormGUI(controller)
         form_details = form.form()
-        print(form_details)
+        read_write_data = ReadWriteData(form_details.iat[0, 0])
+        valid = read_write_data.validate_input_file()
+        if valid:
+            print('The input file, {}, has been successfully validated.'
+                  .format(form_details.iat[0, 0]))
+            read_write_done = read_write_data.read_data_from_csv()
+            if read_write_done[2]:
+                print(
+                    'The input file, {}, has been successfully loaded '
+                    'and the output file has been created successfully.'.format(
+                        form_details.iat[0, 0]))
+                print('Send data to Cytoscape.')
+
+                # TODO Add new dataframe containing user styles and send to cytoscape
+                integration = CytoscapeIntegration(read_write_done[0], read_write_done[1])
+                # Call function to determine if cytoscape works
+                cytoscape_successful = integration.cytoscape_successful()
+
+                if cytoscape_successful:
+                    print('Successful creation of network!')
+                else:
+                    print('Network creation unsuccessful, please make sure that Cytoscape is running in the background')
+            else:
+                print('Error has occurred in Read and/or Write of the file.')
+        else:
+            print('Error found in input file format.')
