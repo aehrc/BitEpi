@@ -7,6 +7,11 @@ class FormGUI:
 
     def __init__(self, controller):
         self.controller = controller
+        self.hide_bool = False
+        self.show_bool = False
+        self.highlight_bool = False
+        self.gray_bool = False
+        self.reset_bool = False
         print("Inside GUI")
 
     # Load file upon clicking submit on the GUI
@@ -14,11 +19,8 @@ class FormGUI:
         valid = self.controller.validate_input_files(input_file, annotation_file)
 
         if valid:
-            print('The input file, {}, has been successfully validated.'
-                  .format(input_file))
             tkMessageBox.showinfo('Success', 'Files have been successfully loaded')
         else:
-            print('Error found in input file format.')
             tkMessageBox.showinfo('Error', 'Please input valid files')
 
     # Method to create the form
@@ -113,16 +115,16 @@ class FormGUI:
         hide_button = tk.Button(filter_frame, bg='#808080', text="Hide", command=lambda: self.hide(hide_button))
         hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        show_button = tk.Button(filter_frame, bg='#808080', text="Show", command=lambda: self.show())
+        show_button = tk.Button(filter_frame, bg='#808080', text="Show", command=lambda: self.show(show_button))
         show_button.place(relx=0.525, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight", command=lambda: self.highlight())
+        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight", command=lambda: self.highlight(hl_button))
         hl_button.place(relx=0.04, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out", command=lambda: self.grayout())
+        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out", command=lambda: self.grayout(gray_button))
         gray_button.place(relx=0.525, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset", command=lambda: self.reset())
+        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset", command=lambda: self.reset(reset_button))
         reset_button.place(relx=0.04, rely=0.85, relheight=0.1, relwidth=0.45)
 
         help_button = tk.Button(filter_frame, bg='#808080', text="Help", command=lambda: self.help())
@@ -133,32 +135,68 @@ class FormGUI:
 
         root.mainloop()
 
-        data = {node_colour_variable.get(), node_size_variable.get(), node_shape_variable.get(),
-                edge_colour_variable.get()
-            , edge_thickness_variable.get(), filter_entry.get()}
-
-        form_details_df = pd.DataFrame(data, columns=['node_colour', 'node_size', 'node_shape'
-            , 'edge_colour', 'edge_thickness', 'query'])
+        form_details_df = pd.DataFrame([[input_file_entry.get(), annot_file_entry.get(), node_colour_variable.get(),
+                                         node_size_variable.get(), node_shape_variable.get()
+                                            , edge_colour_variable.get(), edge_thickness_variable.get(),
+                                         filter_entry.get()
+                                            , self.hide_bool, self.show_bool, self.highlight_bool, self.gray_bool]]
+                                       , columns=['input_file', 'annotation_file', 'node_colour', 'node_size',
+                                                  'node_shape'
+                , 'edge_colour', 'edge_thickness', 'query', 'hide', 'show', 'highlight', 'gray'])
 
         return form_details_df
 
+    def check(self):
+        if not self.reset_bool:
+            if not self.hide_bool and not self.show_bool and not self.highlight_bool and not self.gray_bool:
+                return True
+            else:
+                tkMessageBox.showinfo('Info', 'Can\'t have more than one filter!')
+                return False
+        else:
+            tkMessageBox.showinfo('Info', 'Can\'t apply these filters while reset is set to True!')
+            return False
+
     def hide(self, hide_button):
-        if hide_button.config('text')[-1] == 'Hide':
+        if hide_button.config('text')[-1] == 'Hide' and self.check():
             hide_button.config(text='Disable hide')
+            self.hide_bool = True
         elif hide_button.config('text')[-1] == 'Disable hide':
             hide_button.config(text='Hide')
+            self.hide_bool = False
+            self.check()
 
-    def show(self):
-        pass
+    def show(self, show_button):
+        if show_button.config('text')[-1] == 'Show' and self.check():
+            show_button.config(text='Disable show')
+            self.show_bool = True
+        elif show_button.config('text')[-1] == 'Disable show':
+            show_button.config(text='Show')
+            self.show_bool = False
 
-    def highlight(self):
-        pass
+    def highlight(self, hl_button):
+        if hl_button.config('text')[-1] == 'Highlight' and self.check():
+            hl_button.config(text='Disable highlight')
+            self.highlight_bool = True
+        elif hl_button.config('text')[-1] == 'Disable highlight':
+            hl_button.config(text='Highlight')
+            self.highlight_bool = False
 
-    def grayout(self):
-        pass
+    def grayout(self, gray_button):
+        if gray_button.config('text')[-1] == 'Gray out' and self.check():
+            gray_button.config(text='Disable gray out')
+            self.gray_bool = True
+        elif gray_button.config('text')[-1] == 'Disable gray out':
+            gray_button.config(text='Gray out')
+            self.gray_bool = False
 
-    def reset(self):
-        pass
+    def reset(self, reset_button):
+        if reset_button.config('text')[-1] == 'Reset':
+            reset_button.config(text='Disable reset')
+            self.reset_bool = True
+        elif reset_button.config('text')[-1] == 'Disable reset':
+            reset_button.config(text='Reset')
+            self.reset_bool = False
 
     def help(self):
         tkMessageBox.showinfo('Info', 'This is how the query should be done: \nAaaaaaseemmennnyaaaa hfkewrhgethg4ui5!!')
