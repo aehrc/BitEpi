@@ -9,28 +9,6 @@ class FormGUI:
         self.controller = controller
         print("Inside GUI")
 
-    def hide(self):
-        pass
-
-    def show(self):
-        pass
-
-    def highlight(self):
-        pass
-
-    def grayout(self):
-        pass
-
-    def reset(self):
-        pass
-
-    def help(self):
-        tkMessageBox.showinfo('Info', 'This is how the query should be done: \nAaaaaaseemmennnyaaaa hfkewrhgethg4ui5!!')
-        pass
-
-    def quit(self, root):
-        root.quit()
-
     # Load file upon clicking submit on the GUI
     def load_files(self, input_file, annotation_file):
         valid = self.controller.validate_input_files(input_file, annotation_file)
@@ -81,7 +59,7 @@ class FormGUI:
         node_colour_title = tk.Label(view_frame, bg='#696969', justify='left', text='Node colour by: ')
         node_colour_title.place(relx=0.04, rely=0.2, relheight=0.1, relwidth=0.45)
 
-        node_color_list = ['None', 'Id', 'Order', 'Type']
+        node_color_list = ['None', 'Order', 'Type']
         node_colour_variable = tk.StringVar(view_frame)
         node_colour_variable.set(node_color_list[0])
         node_colour_options = tk.OptionMenu(view_frame, node_colour_variable, *node_color_list)
@@ -90,7 +68,7 @@ class FormGUI:
         node_size_title = tk.Label(view_frame, bg='#696969', text='Node size by: ')
         node_size_title.place(relx=0.04, rely=0.35, relheight=0.1, relwidth=0.45)
 
-        node_size_list = ['None', 'Alpha', 'Beta']
+        node_size_list = ['None', 'Order', 'Alpha', 'Beta']
         node_size_variable = tk.StringVar(view_frame)
         node_size_variable.set(node_size_list[0])
         node_size_options = tk.OptionMenu(view_frame, node_size_variable, *node_size_list)
@@ -108,7 +86,7 @@ class FormGUI:
         edge_colour_title = tk.Label(view_frame, bg='#696969', text='Edge colour by: ')
         edge_colour_title.place(relx=0.04, rely=0.65, relheight=0.1, relwidth=0.45)
 
-        edge_colour_list = ['None', 'Order 1', 'Order 2', 'Order 3', 'Order 4']
+        edge_colour_list = ['None', 'Order']
         edge_colour_variable = tk.StringVar(view_frame)
         edge_colour_variable.set(edge_colour_list[0])
         edge_colour_options = tk.OptionMenu(view_frame, edge_colour_variable, *edge_colour_list)
@@ -132,7 +110,7 @@ class FormGUI:
         filter_entry = tk.Entry(filter_frame, font=24)
         filter_entry.place(relx=0.05, rely=0.2, relwidth=0.925, relheight=0.3)
 
-        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide", command=lambda: self.hide())
+        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide", command=lambda: self.hide(hide_button))
         hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
 
         show_button = tk.Button(filter_frame, bg='#808080', text="Show", command=lambda: self.show())
@@ -163,3 +141,28 @@ class FormGUI:
             , 'edge_colour', 'edge_thickness', 'query'])
 
         return form_details_df
+
+    def hide(self, hide_button):
+        if hide_button.config('text')[-1] == 'Hide':
+            hide_button.config(text='Disable hide')
+        elif hide_button.config('text')[-1] == 'Disable hide':
+            hide_button.config(text='Hide')
+
+    def show(self):
+        pass
+
+    def highlight(self):
+        pass
+
+    def grayout(self):
+        pass
+
+    def reset(self):
+        pass
+
+    def help(self):
+        tkMessageBox.showinfo('Info', 'This is how the query should be done: \nAaaaaaseemmennnyaaaa hfkewrhgethg4ui5!!')
+        pass
+
+    def quit(self, root):
+        root.quit()
