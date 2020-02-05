@@ -1,10 +1,35 @@
 import Tkinter as tk
+import tkMessageBox
+import pandas as pd
 
 
 class FormGUI:
+
     def __init__(self, controller):
         self.controller = controller
         print("Inside GUI")
+
+    def hide(self):
+        pass
+
+    def show(self):
+        pass
+
+    def highlight(self):
+        pass
+
+    def grayout(self):
+        pass
+
+    def reset(self):
+        pass
+
+    def help(self):
+        tkMessageBox.showinfo('Info', 'This is how the query should be done: \nAaaaaaseemmennnyaaaa hfkewrhgethg4ui5!!')
+        pass
+
+    def quit(self, root):
+        root.quit()
 
     # Load file upon clicking submit on the GUI
     def load_files(self, input_file, annotation_file):
@@ -13,10 +38,10 @@ class FormGUI:
         if valid:
             print('The input file, {}, has been successfully validated.'
                   .format(input_file))
-            return True
+            tkMessageBox.showinfo('Success', 'Files have been successfully loaded')
         else:
             print('Error found in input file format.')
-            return False
+            tkMessageBox.showinfo('Error', 'Please input valid files')
 
     # Method to create the form
     def form(self):
@@ -107,27 +132,34 @@ class FormGUI:
         filter_entry = tk.Entry(filter_frame, font=24)
         filter_entry.place(relx=0.05, rely=0.2, relwidth=0.925, relheight=0.3)
 
-        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide")
+        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide", command=lambda: self.hide())
         hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        show_button = tk.Button(filter_frame, bg='#808080', text="Show")
+        show_button = tk.Button(filter_frame, bg='#808080', text="Show", command=lambda: self.show())
         show_button.place(relx=0.525, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight")
+        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight", command=lambda: self.highlight())
         hl_button.place(relx=0.04, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out")
+        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out", command=lambda: self.grayout())
         gray_button.place(relx=0.525, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset")
+        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset", command=lambda: self.reset())
         reset_button.place(relx=0.04, rely=0.85, relheight=0.1, relwidth=0.45)
 
-        help_button = tk.Button(filter_frame, bg='#808080', text="Help")
+        help_button = tk.Button(filter_frame, bg='#808080', text="Help", command=lambda: self.help())
         help_button.place(relx=0.525, rely=0.85, relheight=0.1, relwidth=0.45)
 
-        submit_button = tk.Button(root, text="Submit", font=24)
+        submit_button = tk.Button(root, text="Submit", command=lambda root=root: self.quit(root))
         submit_button.place(relx=0.3, rely=0.9, relheight=0.075, relwidth=0.35)
 
         root.mainloop()
 
-        print('_', node_colour_variable.get())
+        data = {node_colour_variable.get(), node_size_variable.get(), node_shape_variable.get(),
+                edge_colour_variable.get()
+            , edge_thickness_variable.get(), filter_entry.get()}
+
+        form_details_df = pd.DataFrame(data, columns=['node_colour', 'node_size', 'node_shape'
+            , 'edge_colour', 'edge_thickness', 'query'])
+
+        return form_details_df
