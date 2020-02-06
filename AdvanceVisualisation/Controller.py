@@ -23,25 +23,28 @@ class Controller:
             print('Error found in input file format.')
             return False
 
-    def create_form(self):
+    def perform_form_functionality(self):
         controller = Controller()
         form = FormGUI(controller)
         form_details = form.form()
-        read_write_data = ReadWriteData(form_details.iat[0, 0])
+
+        return form_details
+
+    def perfrom_core_functionality(self, core_details):
+        read_write_data = ReadWriteData(core_details.iat[0, 0])
         valid = read_write_data.validate_input_file()
         if valid:
             print('The input file, {}, has been successfully validated.'
-                  .format(form_details.iat[0, 0]))
+                  .format(core_details.iat[0, 0]))
             read_write_done = read_write_data.read_data_from_csv()
             if read_write_done[2]:
                 print(
                     'The input file, {}, has been successfully loaded '
                     'and the output file has been created successfully.'.format(
-                        form_details.iat[0, 0]))
+                        core_details.iat[0, 0]))
                 print('Send data to Cytoscape.')
 
-                # TODO Add new dataframe containing user styles and send to cytoscape
-                integration = CytoscapeIntegration(read_write_done[0], read_write_done[1])
+                integration = CytoscapeIntegration(read_write_done[0], read_write_done[1], core_details)
                 # Call function to determine if cytoscape works
                 cytoscape_successful = integration.cytoscape_successful()
 

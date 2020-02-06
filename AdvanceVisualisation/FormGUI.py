@@ -138,10 +138,11 @@ class FormGUI:
                                          node_size_variable.get(), node_shape_variable.get()
                                             , edge_colour_variable.get(), edge_thickness_variable.get(),
                                          filter_entry.get()
-                                            , self.hide_bool, self.show_bool, self.highlight_bool, self.gray_bool]]
+                                            , self.hide_bool, self.show_bool, self.highlight_bool, self.gray_bool,
+                                         self.reset_bool]]
                                        , columns=['input_file', 'annotation_file', 'node_colour', 'node_size',
                                                   'node_shape'
-                , 'edge_colour', 'edge_thickness', 'query', 'hide', 'show', 'highlight', 'gray'])
+                , 'edge_colour', 'edge_thickness', 'query', 'hide', 'show', 'highlight', 'gray', 'reset'])
 
         return form_details_df
 

@@ -6,9 +6,10 @@ import simplejson
 
 
 class CytoscapeIntegration:
-    def __init__(self, node_df, edge_df):
+    def __init__(self, node_df, edge_df, core_details):
         self.node_df = node_df
         self.edge_df = edge_df
+        self.core_details = core_details
         self.json_file_name = 'json_file.json'
         self.json_file_path = os.path.join('OutputData/', self.json_file_name)
 
@@ -58,34 +59,39 @@ class CytoscapeIntegration:
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
-        new_styles = {
-            'NODE_FILL_COLOR': '#8A030',
-            'NODE_SIZE': 25,
-            'NODE_BORDER_WIDTH': 0,
-            'NODE_TRANSPARENCY': 255,
-            'NODE_LABEL_COLOR': '#323334',
+        if self.core_details.at[0, 'reset']:
+            new_styles = {
+                'NODE_FILL_COLOR': '#8A030',
+                'NODE_SIZE': 25,
+                'NODE_BORDER_WIDTH': 0,
+                'NODE_TRANSPARENCY': 255,
+                'NODE_LABEL_COLOR': '#323334',
 
-            'EDGE_WIDTH': 3,
-            'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
-            'EDGE_LINE_TYPE': 'SOLID',
-            'EDGE_TRANSPARENCY': 120,
+                'EDGE_WIDTH': 3,
+                'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
+                'EDGE_LINE_TYPE': 'SOLID',
+                'EDGE_TRANSPARENCY': 120,
 
-            'NETWORK_BACKGROUND_PAINT': 'white'
-        }
+                'NETWORK_BACKGROUND_PAINT': 'white'
+            }
 
-        my_style.update_defaults(new_styles)
+            my_style.update_defaults(new_styles)
 
-        # Discrete mappings for specific regions
-        # Colour by order and set size by Alpha/ Beta
-        order_key_value_pair = {
-            '1': '#8A030',
-            '2': '#0077be',
-            '3': '#f9d71c',
-            '4': '#8a0303'
-        }
+            # Discrete mappings for specific regions
+            # Colour by order and set size by Alpha/ Beta
+            order_key_value_pair = {
+                '1': '#8A030',
+                '2': '#0077be',
+                '3': '#f9d71c',
+                '4': '#8a0303'
+            }
 
-        my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
-                                         mappings=order_key_value_pair)
+            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
+                                             mappings=order_key_value_pair)
+
+        # TODO write the code for other styles
+        else:
+            print('No styles specified')
 
         cy.style.apply(my_style, node_edge_network)
 
