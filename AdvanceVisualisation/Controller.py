@@ -30,9 +30,10 @@ class Controller:
 
         return form_details
 
-    def perfrom_core_functionality(self, core_details):
+    def perform_core_functionality(self, core_details):
         read_write_data = ReadWriteData(core_details.iat[0, 0])
         valid = read_write_data.validate_input_file()
+        # TODO validate annotation file
         if valid:
             print('The input file, {}, has been successfully validated.'
                   .format(core_details.iat[0, 0]))
@@ -56,3 +57,5 @@ class Controller:
                 print('Error has occurred in Read and/or Write of the file.')
         else:
             print('Error found in input file format.')
+
+        return valid

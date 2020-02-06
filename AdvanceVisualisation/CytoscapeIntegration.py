@@ -59,35 +59,69 @@ class CytoscapeIntegration:
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
-        if self.core_details.at[0, 'reset']:
-            new_styles = {
-                'NODE_FILL_COLOR': '#8A030',
-                'NODE_SIZE': 25,
-                'NODE_BORDER_WIDTH': 0,
-                'NODE_TRANSPARENCY': 255,
-                'NODE_LABEL_COLOR': '#323334',
+        # Discrete mappings for specific regions
+        order_colour_key_value_pair = {
+            '1': '#8A030',
+            '2': '#0077be',
+            '3': '#f9d71c',
+            '4': '#8a0303'
+        }
 
-                'EDGE_WIDTH': 3,
-                'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
-                'EDGE_LINE_TYPE': 'SOLID',
-                'EDGE_TRANSPARENCY': 120,
+        type_colour_key_value_pair = {
+            'Alpha': '#8A030',
+            'Beta': '#f9d71c'
+        }
 
-                'NETWORK_BACKGROUND_PAINT': 'white'
-            }
+        order_size_key_value_pair = {
+            '1': '25.0',
+            '2': '35.0',
+            '3': '40.0',
+            '4': '50.0'
+        }
 
-            my_style.update_defaults(new_styles)
+        type_size_key_value_pair = {
+            'Alpha': '50.0',
+            'Beta': '20.0'
+        }
 
-            # Discrete mappings for specific regions
-            # Colour by order and set size by Alpha/ Beta
-            order_key_value_pair = {
-                '1': '#8A030',
-                '2': '#0077be',
-                '3': '#f9d71c',
-                '4': '#8a0303'
-            }
+        order_shape_key_value_pair = {
+            '1': 'Ellipse',
+            '2': 'Diamond',
+            '3': 'Triangle',
+            '4': 'Hexagon'
+        }
+        type_shape_key_value_pair = {
+            'Alpha': 'Ellipse',
+            'Beta': 'Hexagon'
+        }
 
-            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
-                                             mappings=order_key_value_pair)
+        if 'reset' in self.core_details:
+            if self.core_details.at[0, 'reset']:
+                new_styles = {
+                    'NODE_FILL_COLOR': '#8A030',
+                    'NODE_SIZE': 25,
+                    'NODE_BORDER_WIDTH': 0,
+                    'NODE_TRANSPARENCY': 255,
+                    'NODE_LABEL_COLOR': '#323334',
+
+                    'EDGE_WIDTH': 3,
+                    'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
+                    'EDGE_LINE_TYPE': 'SOLID',
+                    'EDGE_TRANSPARENCY': 120,
+
+                    'NETWORK_BACKGROUND_PAINT': 'white'
+                }
+
+                my_style.update_defaults(new_styles)
+
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
+                                                 mappings=order_colour_key_value_pair)
+
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SIZE',
+                                                 mappings=order_size_key_value_pair)
+
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SHAPE',
+                                                 mappings=order_shape_key_value_pair)
 
         # TODO write the code for other styles
         else:

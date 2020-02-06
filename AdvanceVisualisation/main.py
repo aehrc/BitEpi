@@ -10,7 +10,7 @@ from Controller import Controller
 def gui_main():
     controller = Controller()
     form_details = controller.perform_form_functionality()
-    controller.perfrom_core_functionality(form_details)
+    controller.perform_core_functionality(form_details)
 
 
 def main():
@@ -22,7 +22,7 @@ def main():
     input_file = args['i']
     details_df = pd.DataFrame([[input_file, True]], columns=['input_file', 'reset'])
     controller = Controller()
-    controller.perfrom_core_functionality(details_df)
+    controller.perform_core_functionality(details_df)
 
 
 if __name__ == '__main__':

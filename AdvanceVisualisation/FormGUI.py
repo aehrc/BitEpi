@@ -15,8 +15,9 @@ class FormGUI:
 
     # Load file upon clicking submit on the GUI
     def load_files(self, input_file, annotation_file):
-        valid = self.controller.validate_input_files(input_file, annotation_file)
-
+        details_df = pd.DataFrame([[input_file, annotation_file, True]],
+                                  columns=['input_file', 'annotation_file', 'reset'])
+        valid = self.controller.perform_core_functionality(details_df)
         if valid:
             tkMessageBox.showinfo('Success', 'Files have been successfully loaded')
         else:
@@ -63,25 +64,34 @@ class FormGUI:
         node_color_list = ['None', 'Order', 'Type']
         node_colour_variable = tk.StringVar(view_frame)
         node_colour_variable.set(node_color_list[0])
-        node_colour_options = tk.OptionMenu(view_frame, node_colour_variable, *node_color_list)
+        node_colour_options = tk.OptionMenu(view_frame, node_colour_variable, *node_color_list,
+                                            command=lambda x: self.node_colour(node_colour_variable.get(),
+                                                                               input_file_entry.get(),
+                                                                               annot_file_entry.get()))
         node_colour_options.place(relx=0.525, rely=0.2, relheight=0.1, relwidth=0.45)
 
         node_size_title = tk.Label(view_frame, bg='#696969', text='Node size by: ')
         node_size_title.place(relx=0.04, rely=0.35, relheight=0.1, relwidth=0.45)
 
-        node_size_list = ['None', 'Order', 'Alpha', 'Beta']
+        node_size_list = ['None', 'Order', 'Type']
         node_size_variable = tk.StringVar(view_frame)
         node_size_variable.set(node_size_list[0])
-        node_size_options = tk.OptionMenu(view_frame, node_size_variable, *node_size_list)
+        node_size_options = tk.OptionMenu(view_frame, node_size_variable, *node_size_list,
+                                          command=lambda x: self.node_size(node_size_variable.get(),
+                                                                           input_file_entry.get(),
+                                                                           annot_file_entry.get()))
         node_size_options.place(relx=0.525, rely=0.35, relheight=0.1, relwidth=0.45)
 
         node_shape_title = tk.Label(view_frame, bg='#696969', text='Node shape by: ')
         node_shape_title.place(relx=0.04, rely=0.5, relheight=0.1, relwidth=0.45)
 
-        node_shape_list = ['None', 'Alpha', 'Beta']
+        node_shape_list = ['None', 'Order', 'Type']
         node_shape_variable = tk.StringVar(view_frame)
         node_shape_variable.set(node_shape_list[0])
-        node_shape_options = tk.OptionMenu(view_frame, node_shape_variable, *node_shape_list)
+        node_shape_options = tk.OptionMenu(view_frame, node_shape_variable, *node_shape_list,
+                                           command=lambda x: self.node_shape(node_shape_variable.get(),
+                                                                             input_file_entry.get(),
+                                                                             annot_file_entry.get()))
         node_shape_options.place(relx=0.525, rely=0.5, relheight=0.1, relwidth=0.45)
 
         edge_colour_title = tk.Label(view_frame, bg='#696969', text='Edge colour by: ')
@@ -90,16 +100,22 @@ class FormGUI:
         edge_colour_list = ['None', 'Order']
         edge_colour_variable = tk.StringVar(view_frame)
         edge_colour_variable.set(edge_colour_list[0])
-        edge_colour_options = tk.OptionMenu(view_frame, edge_colour_variable, *edge_colour_list)
+        edge_colour_options = tk.OptionMenu(view_frame, edge_colour_variable, *edge_colour_list,
+                                            command=lambda x: self.edge_colour(edge_colour_variable.get(),
+                                                                               input_file_entry.get(),
+                                                                               annot_file_entry.get()))
         edge_colour_options.place(relx=0.525, rely=0.65, relheight=0.1, relwidth=0.45)
 
         edge_thickness_title = tk.Label(view_frame, bg='#696969', text='Edge thickness by: ')
         edge_thickness_title.place(relx=0.04, rely=0.8, relheight=0.1, relwidth=0.45)
 
-        edge_thickness_list = ['None', 'Alpha', 'Beta']
+        edge_thickness_list = ['None', 'Order', 'Type']
         edge_thickness_variable = tk.StringVar(view_frame)
         edge_thickness_variable.set(edge_thickness_list[0])
-        edge_thickness_options = tk.OptionMenu(view_frame, edge_thickness_variable, *edge_thickness_list)
+        edge_thickness_options = tk.OptionMenu(view_frame, edge_thickness_variable, *edge_thickness_list,
+                                               command=lambda x: self.edge_thickness(edge_thickness_variable.get(),
+                                                                                     input_file_entry.get(),
+                                                                                     annot_file_entry.get()))
         edge_thickness_options.place(relx=0.525, rely=0.8, relheight=0.1, relwidth=0.45)
 
         filter_frame = tk.Frame(root, bg='#696969', bd=5)
@@ -111,22 +127,30 @@ class FormGUI:
         filter_entry = tk.Entry(filter_frame, font=24)
         filter_entry.place(relx=0.05, rely=0.2, relwidth=0.925, relheight=0.3)
 
-        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide", command=lambda: self.hide(hide_button))
+        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide",
+                                command=lambda: self.hide(hide_button, input_file_entry.get(), annot_file_entry.get()))
         hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        show_button = tk.Button(filter_frame, bg='#808080', text="Show", command=lambda: self.show(show_button))
+        show_button = tk.Button(filter_frame, bg='#808080', text="Show",
+                                command=lambda: self.show(show_button, input_file_entry.get(), annot_file_entry.get()))
         show_button.place(relx=0.525, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight", command=lambda: self.highlight(hl_button))
+        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight",
+                              command=lambda: self.highlight(hl_button, input_file_entry.get(), annot_file_entry.get()))
         hl_button.place(relx=0.04, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out", command=lambda: self.grayout(gray_button))
+        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out",
+                                command=lambda: self.grayout(gray_button, input_file_entry.get(),
+                                                             annot_file_entry.get()))
         gray_button.place(relx=0.525, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset", command=lambda: self.reset(reset_button))
+        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset",
+                                 command=lambda: self.reset(reset_button, input_file_entry.get(),
+                                                            annot_file_entry.get()))
         reset_button.place(relx=0.04, rely=0.85, relheight=0.1, relwidth=0.45)
 
-        help_button = tk.Button(filter_frame, bg='#808080', text="Help", command=lambda: self.help())
+        help_button = tk.Button(filter_frame, bg='#808080', text="Help",
+                                command=lambda: self.help())
         help_button.place(relx=0.525, rely=0.85, relheight=0.1, relwidth=0.45)
 
         submit_button = tk.Button(root, text="Submit", command=lambda root=root: self.quit(root))
@@ -157,43 +181,58 @@ class FormGUI:
             tkMessageBox.showinfo('Info', 'Can\'t apply these filters while reset is set to True!')
             return False
 
-    def hide(self, hide_button):
+    def hide(self, hide_button, input_file, annotation_file):
         if hide_button.config('text')[-1] == 'Hide' and self.check():
             hide_button.config(text='Disable hide')
             self.hide_bool = True
+            form_details_df = pd.DataFrame([[input_file, annotation_file, self.hide_bool]],
+                                           columns=['input_file', 'annotation_file', 'hide'])
+            self.controller.perform_core_functionality(form_details_df)
         elif hide_button.config('text')[-1] == 'Disable hide':
             hide_button.config(text='Hide')
             self.hide_bool = False
             self.check()
 
-    def show(self, show_button):
+    def show(self, show_button, input_file, annotation_file):
         if show_button.config('text')[-1] == 'Show' and self.check():
             show_button.config(text='Disable show')
             self.show_bool = True
+            form_details_df = pd.DataFrame([[input_file, annotation_file, self.show_bool]],
+                                           columns=['input_file', 'annotation_file', 'show'])
+            self.controller.perform_core_functionality(form_details_df)
         elif show_button.config('text')[-1] == 'Disable show':
             show_button.config(text='Show')
             self.show_bool = False
 
-    def highlight(self, hl_button):
+    def highlight(self, hl_button, input_file, annotation_file):
         if hl_button.config('text')[-1] == 'Highlight' and self.check():
             hl_button.config(text='Disable highlight')
             self.highlight_bool = True
+            form_details_df = pd.DataFrame([[input_file, annotation_file, self.highlight_bool]],
+                                           columns=['input_file', 'annotation_file', 'highlight'])
+            self.controller.perform_core_functionality(form_details_df)
         elif hl_button.config('text')[-1] == 'Disable highlight':
             hl_button.config(text='Highlight')
             self.highlight_bool = False
 
-    def grayout(self, gray_button):
+    def grayout(self, gray_button, input_file, annotation_file):
         if gray_button.config('text')[-1] == 'Gray out' and self.check():
             gray_button.config(text='Disable gray out')
             self.gray_bool = True
+            form_details_df = pd.DataFrame([[input_file, annotation_file, self.gray_bool]],
+                                           columns=['input_file', 'annotation_file', 'gray'])
+            self.controller.perform_core_functionality(form_details_df)
         elif gray_button.config('text')[-1] == 'Disable gray out':
             gray_button.config(text='Gray out')
             self.gray_bool = False
 
-    def reset(self, reset_button):
+    def reset(self, reset_button, input_file, annotation_file):
         if reset_button.config('text')[-1] == 'Reset':
             reset_button.config(text='Disable reset')
             self.reset_bool = True
+            form_details_df = pd.DataFrame([[input_file, annotation_file, self.reset_bool]],
+                                           columns=['input_file', 'annotation_file', 'reset'])
+            self.controller.perform_core_functionality(form_details_df)
         elif reset_button.config('text')[-1] == 'Disable reset':
             reset_button.config(text='Reset')
             self.reset_bool = False
@@ -204,3 +243,28 @@ class FormGUI:
 
     def quit(self, root):
         root.quit()
+
+    def node_colour(self, node_colour, input_file, annotation_file):
+        form_details_df = pd.DataFrame([[input_file, annotation_file, node_colour]],
+                                       columns=['input_file', 'annotation_file', 'node_colour'])
+        self.controller.perform_core_functionality(form_details_df)
+
+    def node_size(self, node_size, input_file, annotation_file):
+        form_details_df = pd.DataFrame([[input_file, annotation_file, node_size]],
+                                       columns=['input_file', 'annotation_file', 'node_size'])
+        self.controller.perform_core_functionality(form_details_df)
+
+    def node_shape(self, node_shape, input_file, annotation_file):
+        form_details_df = pd.DataFrame([[input_file, annotation_file, node_shape]],
+                                       columns=['input_file', 'annotation_file', 'node_shape'])
+        self.controller.perform_core_functionality(form_details_df)
+
+    def edge_colour(self, edge_colour, input_file, annotation_file):
+        form_details_df = pd.DataFrame([[input_file, annotation_file, edge_colour]],
+                                       columns=['input_file', 'annotation_file', 'edge_colour'])
+        self.controller.perform_core_functionality(form_details_df)
+
+    def edge_thickness(self, edge_thickness, input_file, annotation_file):
+        form_details_df = pd.DataFrame([[input_file, annotation_file, edge_thickness]],
+                                       columns=['input_file', 'annotation_file', 'edge_thickness'])
+        self.controller.perform_core_functionality(form_details_df)

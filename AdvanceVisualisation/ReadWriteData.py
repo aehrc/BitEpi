@@ -20,34 +20,33 @@ class ReadWriteData:
         valid = True
         # Split the file name and verify each substring
         new_input_file = self.input_file.split('.')
-
-        if len(new_input_file) < 1:
+        if len(new_input_file) <= 1:
             valid = False
+        else:
+            prefix = new_input_file[0][-1]
 
-        prefix = new_input_file[0][-1]
+            # Alpha or Beta
+            input_type = new_input_file[1]
+            if (input_type == 'Alpha' or input_type == 'Beta' or input_type == 'best') \
+                    and valid:
+                if input_type != 'best':
+                    order = new_input_file[2]
+                    if order != '1' and order != '2' \
+                            and order != '3' and order != '4':
+                        valid = False
 
-        # Alpha or Beta
-        input_type = new_input_file[1]
-        if (input_type == 'Alpha' or input_type == 'Beta' or input_type == 'best') \
-                and valid:
-            if input_type != 'best':
-                order = new_input_file[2]
-                if order != '1' and order != '2' \
-                        and order != '3' and order != '4':
+                    # JobIndex is only there depending on the length of the list
+                    if len(new_input_file) == 5 and valid:
+                        valid = False
+
+                    if len(new_input_file) == 6 and valid:
+                        first_job_index = new_input_file[3]
+                        last_job_index = new_input_file[4]
+
+                extension = new_input_file[-1]
+
+                if (extension != 'csv') and valid:
                     valid = False
-
-                # JobIndex is only there depending on the length of the list
-                if len(new_input_file) == 5 and valid:
-                    valid = False
-
-                if len(new_input_file) == 6 and valid:
-                    first_job_index = new_input_file[3]
-                    last_job_index = new_input_file[4]
-
-            extension = new_input_file[-1]
-
-            if (extension != 'csv') and valid:
-                valid = False
 
         return valid
 
