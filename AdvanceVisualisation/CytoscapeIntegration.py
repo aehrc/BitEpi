@@ -41,7 +41,7 @@ class CytoscapeIntegration:
         with open(self.json_file_path, 'w') as outfile:
             json.dump(full_dict, outfile, sort_keys=True, indent=4)
 
-    def cytoscape_successful(self):
+    def cytoscape_successful(self, update):
         cytoscape_successful = True
 
         # Create client
@@ -67,9 +67,16 @@ class CytoscapeIntegration:
             '4': '#8a0303'
         }
 
-        type_colour_key_value_pair = {
-            'Alpha': '#8A030',
-            'Beta': '#f9d71c'
+        edge_order_colour_key_value_pair = {
+            '2': '#add8e6',
+            '3': '#ffff99',
+            '4': '#bb3f3f'
+        }
+
+        edge_order_size_key_value_pair = {
+            '2': '7.0',
+            '3': '5.0',
+            '4': '3.0'
         }
 
         order_size_key_value_pair = {
@@ -79,51 +86,49 @@ class CytoscapeIntegration:
             '4': '50.0'
         }
 
-        type_size_key_value_pair = {
-            'Alpha': '50.0',
-            'Beta': '20.0'
-        }
-
         order_shape_key_value_pair = {
             '1': 'Ellipse',
             '2': 'Diamond',
             '3': 'Triangle',
             '4': 'Hexagon'
         }
-        type_shape_key_value_pair = {
-            'Alpha': 'Ellipse',
-            'Beta': 'Hexagon'
-        }
 
-        if 'reset' in self.core_details:
-            if self.core_details.at[0, 'reset']:
-                new_styles = {
-                    'NODE_FILL_COLOR': '#8A030',
-                    'NODE_SIZE': 25,
-                    'NODE_BORDER_WIDTH': 0,
-                    'NODE_TRANSPARENCY': 255,
-                    'NODE_LABEL_COLOR': '#323334',
+        if not update:
+            new_styles = {
+                'NODE_FILL_COLOR': '#8A030',
+                'NODE_SIZE': 25,
+                'NODE_BORDER_WIDTH': 0,
+                'NODE_TRANSPARENCY': 255,
+                'NODE_LABEL_COLOR': '#323334',
 
-                    'EDGE_WIDTH': 3,
-                    'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
-                    'EDGE_LINE_TYPE': 'SOLID',
-                    'EDGE_TRANSPARENCY': 120,
+                'EDGE_WIDTH': 3,
+                'EDGE_STROKE_UNSELECTED_PAINT': '#a9a9a9',
+                'EDGE_LINE_TYPE': 'SOLID',
+                'EDGE_TRANSPARENCY': 120,
 
-                    'NETWORK_BACKGROUND_PAINT': 'white'
-                }
+                'NETWORK_BACKGROUND_PAINT': 'white'
+            }
 
-                my_style.update_defaults(new_styles)
+            my_style.update_defaults(new_styles)
 
-                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
-                                                 mappings=order_colour_key_value_pair)
+            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
+                                             mappings=order_colour_key_value_pair)
 
-                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SIZE',
-                                                 mappings=order_size_key_value_pair)
+            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SIZE',
+                                             mappings=order_size_key_value_pair)
 
-                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SHAPE',
-                                                 mappings=order_shape_key_value_pair)
+            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SHAPE',
+                                             mappings=order_shape_key_value_pair)
+
+            my_style.create_discrete_mapping(column='order', col_type='String',
+                                             vp='EDGE_STROKE_UNSELECTED_PAINT',
+                                             mappings=edge_order_colour_key_value_pair)
+
+            my_style.create_discrete_mapping(column='order', col_type='String', vp='EDGE_WIDTH',
+                                             mappings=edge_order_size_key_value_pair)
 
         # TODO write the code for other styles
+        # TODO If need to update then read the csv file with styles and tweak it as necessary
         else:
             print('No styles specified')
 

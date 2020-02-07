@@ -30,14 +30,17 @@ class Controller:
 
         return form_details
 
-    def perform_core_functionality(self, core_details):
+    # Sorta send a update True or false
+    # If false then make the standard set network otherwise update accordingly
+    def perform_core_functionality(self, core_details, update, interaction_or_edge):
         read_write_data = ReadWriteData(core_details.iat[0, 0])
         valid = read_write_data.validate_input_file()
-        # TODO validate annotation file
+        # TODO validate annotation file and join with node file
         if valid:
             print('The input file, {}, has been successfully validated.'
                   .format(core_details.iat[0, 0]))
-            read_write_done = read_write_data.read_data_from_csv()
+
+            read_write_done = read_write_data.read_data_from_csv(interaction_or_edge)
             if read_write_done[2]:
                 print(
                     'The input file, {}, has been successfully loaded '
@@ -47,7 +50,7 @@ class Controller:
 
                 integration = CytoscapeIntegration(read_write_done[0], read_write_done[1], core_details)
                 # Call function to determine if cytoscape works
-                cytoscape_successful = integration.cytoscape_successful()
+                cytoscape_successful = integration.cytoscape_successful(update)
 
                 if cytoscape_successful:
                     print('Successful creation of network!')
