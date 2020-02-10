@@ -62,22 +62,22 @@ class CytoscapeIntegration:
 
         # Discrete mappings for specific regions
         order_colour_key_value_pair = {
-            '1': '#8A030',
-            '2': '#0077be',
-            '3': '#f9d71c',
-            '4': '#8a0303'
+            '1': '#c99e10',
+            '2': '#9b4f0f',
+            '3': '#1e434c',
+            '4': '#8d230f'
         }
 
         edge_order_colour_key_value_pair = {
-            '2': '#add8e6',
-            '3': '#ffff99',
-            '4': '#bb3f3f'
+            '2': '#9b4f0f',
+            '3': '#1e434c',
+            '4': '#8d230f'
         }
 
         edge_order_size_key_value_pair = {
-            '2': '7.0',
-            '3': '5.0',
-            '4': '3.0'
+            '2': '5.0',
+            '3': '3.0',
+            '4': '1.0'
         }
 
         order_size_key_value_pair = {
@@ -96,8 +96,8 @@ class CytoscapeIntegration:
 
         if not update:
             new_styles = {
-                'NODE_FILL_COLOR': '#8A030',
-                'NODE_SIZE': 25,
+                'NODE_FILL_COLOR': '#363636',
+                'NODE_SIZE': 10,
                 'NODE_BORDER_WIDTH': 0,
                 'NODE_TRANSPARENCY': 255,
                 'NODE_LABEL_COLOR': '#323334',

@@ -27,13 +27,13 @@ class FormGUI:
     def form(self):
         root = tk.Tk()
 
-        canvas = tk.Canvas(root, height=640, width=640)
+        canvas = tk.Canvas(root, bg='#763626', height=640, width=640)
         canvas.pack()
 
-        main_title = tk.Label(root, text='Hi, please fill out the specifics you would like to see!')
+        main_title = tk.Label(root, bg='#763626', text='Hi, please fill out the specifics you would like to see!')
         main_title.place(relx=0.1, rely=0.05, relheight=0.05, relwidth=0.75)
 
-        file_frame = tk.Frame(root, bg='#a9a9a9', bd=5)
+        file_frame = tk.Frame(root, bg='#2A3132', bd=5)
         file_frame.place(relx=0.5, rely=0.1, relwidth=0.95, relheight=0.2, anchor='n')
 
         input_file_title = tk.Label(file_frame, text='Prefix file path: ')
@@ -56,110 +56,109 @@ class FormGUI:
         edge_radio_button = tk.Radiobutton(file_frame, text='Show edges', variable=v, value=2)
         edge_radio_button.place(relx=0.4, rely=0.7, relwidth=0.2, relheight=0.2)
 
-        load_button = tk.Button(file_frame, bg='#808080', text="Load files",
+        load_button = tk.Button(file_frame, bg='#90afc5', text="Load files",
                                 command=lambda: self.load_files(input_file_entry.get(), annot_file_entry.get(),
                                                                 v.get()))
         load_button.place(relx=0.725, rely=0.7, relheight=0.2, relwidth=0.25)
 
-        view_frame = tk.Frame(root, bg='#808080', bd=5)
+        view_frame = tk.Frame(root, bg='#336b87', bd=5)
         view_frame.place(relx=0.258, rely=0.31, relwidth=0.468, relheight=0.575, anchor='n')
 
-        view_frame_title = tk.Label(view_frame, bg='#808080', text='Specify how you would like to put styles!')
+        view_frame_title = tk.Label(view_frame, bg='#336b87', text='Specify how you would like to put styles!')
         view_frame_title.place(relx=0.04, rely=0.05, relheight=0.1, relwidth=0.95)
 
-        node_colour_title = tk.Label(view_frame, bg='#696969', justify='left', text='Node colour by: ')
+        node_colour_title = tk.Label(view_frame, bg='#90afc5', justify='left', text='Node colour by: ')
         node_colour_title.place(relx=0.04, rely=0.2, relheight=0.1, relwidth=0.45)
 
-        node_color_list = ['Order', 'Type', 'None']
+        node_color_list = ['Order', 'Type', 'Default']
         node_colour_variable = tk.StringVar(view_frame)
-        # TODO dont have this if edge data
-        node_colour_variable.set(node_color_list[0])
+        node_colour_variable.set(node_color_list[2])
         node_colour_options = tk.OptionMenu(view_frame, node_colour_variable, *node_color_list,
                                             command=lambda x: self.node_colour(node_colour_variable.get(),
                                                                                input_file_entry.get(),
                                                                                annot_file_entry.get(), v.get()))
         node_colour_options.place(relx=0.525, rely=0.2, relheight=0.1, relwidth=0.45)
 
-        node_size_title = tk.Label(view_frame, bg='#696969', text='Node size by: ')
+        node_size_title = tk.Label(view_frame, bg='#90afc5', text='Node size by: ')
         node_size_title.place(relx=0.04, rely=0.35, relheight=0.1, relwidth=0.45)
 
-        node_size_list = ['Order', 'Type', 'None']
+        node_size_list = ['Order', 'Type', 'Default']
         node_size_variable = tk.StringVar(view_frame)
-        node_size_variable.set(node_size_list[0])
+        node_size_variable.set(node_size_list[2])
         node_size_options = tk.OptionMenu(view_frame, node_size_variable, *node_size_list,
                                           command=lambda x: self.node_size(node_size_variable.get(),
                                                                            input_file_entry.get(),
                                                                            annot_file_entry.get(), v.get()))
         node_size_options.place(relx=0.525, rely=0.35, relheight=0.1, relwidth=0.45)
 
-        node_shape_title = tk.Label(view_frame, bg='#696969', text='Node shape by: ')
+        node_shape_title = tk.Label(view_frame, bg='#90afc5', text='Node shape by: ')
         node_shape_title.place(relx=0.04, rely=0.5, relheight=0.1, relwidth=0.45)
 
-        node_shape_list = ['Order', 'Type', 'None']
+        node_shape_list = ['Order', 'Type', 'Default']
         node_shape_variable = tk.StringVar(view_frame)
-        node_shape_variable.set(node_shape_list[0])
+        node_shape_variable.set(node_shape_list[2])
         node_shape_options = tk.OptionMenu(view_frame, node_shape_variable, *node_shape_list,
                                            command=lambda x: self.node_shape(node_shape_variable.get(),
                                                                              input_file_entry.get(),
                                                                              annot_file_entry.get(), v.get()))
         node_shape_options.place(relx=0.525, rely=0.5, relheight=0.1, relwidth=0.45)
 
-        edge_colour_title = tk.Label(view_frame, bg='#696969', text='Edge colour by: ')
+        edge_colour_title = tk.Label(view_frame, bg='#90afc5', text='Edge colour by: ')
         edge_colour_title.place(relx=0.04, rely=0.65, relheight=0.1, relwidth=0.45)
 
-        edge_colour_list = ['Order', 'None']
+        edge_colour_list = ['Order', 'Default']
         edge_colour_variable = tk.StringVar(view_frame)
-        edge_colour_variable.set(edge_colour_list[0])
+        edge_colour_variable.set(edge_colour_list[1])
         edge_colour_options = tk.OptionMenu(view_frame, edge_colour_variable, *edge_colour_list,
                                             command=lambda x: self.edge_colour(edge_colour_variable.get(),
                                                                                input_file_entry.get(),
                                                                                annot_file_entry.get(), v.get()))
         edge_colour_options.place(relx=0.525, rely=0.65, relheight=0.1, relwidth=0.45)
 
-        edge_thickness_title = tk.Label(view_frame, bg='#696969', text='Edge thickness by: ')
+        edge_thickness_title = tk.Label(view_frame, bg='#90afc5', text='Edge thickness by: ')
         edge_thickness_title.place(relx=0.04, rely=0.8, relheight=0.1, relwidth=0.45)
 
-        edge_thickness_list = ['Order', 'Type', 'None']
+        edge_thickness_list = ['Order', 'Type', 'Default']
         edge_thickness_variable = tk.StringVar(view_frame)
-        edge_thickness_variable.set(edge_thickness_list[0])
+        edge_thickness_variable.set(edge_thickness_list[2])
         edge_thickness_options = tk.OptionMenu(view_frame, edge_thickness_variable, *edge_thickness_list,
                                                command=lambda x: self.edge_thickness(edge_thickness_variable.get(),
                                                                                      input_file_entry.get(),
                                                                                      annot_file_entry.get(), v.get()))
         edge_thickness_options.place(relx=0.525, rely=0.8, relheight=0.1, relwidth=0.45)
 
-        filter_frame = tk.Frame(root, bg='#696969', bd=5)
+        filter_frame = tk.Frame(root, bg='#336b87', bd=5)
         filter_frame.place(relx=0.74, rely=0.31, relwidth=0.468, relheight=0.575, anchor='n')
 
-        filter_frame_title = tk.Label(filter_frame, bg='#696969', text='Specify how you would like to filter!')
+        filter_frame_title = tk.Label(filter_frame, bg='#336b87', text='Specify how you would like to filter!')
         filter_frame_title.place(relx=0.04, rely=0.05, relheight=0.1, relwidth=0.95)
 
         filter_entry = tk.Entry(filter_frame, font=24)
         filter_entry.place(relx=0.05, rely=0.2, relwidth=0.925, relheight=0.3)
 
-        hide_button = tk.Button(filter_frame, bg='#808080', text="Hide",
+        hide_button = tk.Button(filter_frame, bg='#90afc5', text="Hide",
                                 command=lambda: self.hide(input_file_entry.get(), annot_file_entry.get(), v.get()))
         hide_button.place(relx=0.04, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        show_button = tk.Button(filter_frame, bg='#808080', text="Show",
+        show_button = tk.Button(filter_frame, bg='#90afc5', text="Show",
                                 command=lambda: self.show(input_file_entry.get(), annot_file_entry.get(), v.get()))
         show_button.place(relx=0.525, rely=0.55, relheight=0.1, relwidth=0.45)
 
-        hl_button = tk.Button(filter_frame, bg='#808080', text="Highlight",
+        hl_button = tk.Button(filter_frame, bg='#90afc5', text="Highlight",
                               command=lambda: self.highlight(input_file_entry.get(), annot_file_entry.get(), v.get()))
         hl_button.place(relx=0.04, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        gray_button = tk.Button(filter_frame, bg='#808080', text="Gray out",
+        gray_button = tk.Button(filter_frame, bg='#90afc5', text="Gray out",
                                 command=lambda: self.grayout(input_file_entry.get(),
                                                              annot_file_entry.get(), v.get()))
         gray_button.place(relx=0.525, rely=0.7, relheight=0.1, relwidth=0.45)
 
-        reset_button = tk.Button(filter_frame, bg='#808080', text="Reset",
+        reset_button = tk.Button(filter_frame, bg='#90afc5', text="Reset",
                                  command=lambda: self.reset(input_file_entry.get(),
                                                             annot_file_entry.get(), v.get()))
         reset_button.place(relx=0.04, rely=0.85, relheight=0.1, relwidth=0.45)
 
-        help_button = tk.Button(filter_frame, bg='#808080', text="Help",
+        help_button = tk.Button(filter_frame, bg='#90afc5', text="Help",
                                 command=lambda: self.help())
         help_button.place(relx=0.525, rely=0.85, relheight=0.1, relwidth=0.45)
 
