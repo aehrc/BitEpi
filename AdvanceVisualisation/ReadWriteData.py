@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 
 class ReadWriteData:
@@ -359,11 +360,11 @@ class ReadWriteData:
 
     # Merge node df with annotations
     def create_df_with_annotations(self, new_node_df):
-        annotation_file_path = os.path.join('OutputData/', self.annotation_file)
+        annotation_file_path = os.path.join('../sampleData/', self.annotation_file)
         annotation_df = pd.read_csv(annotation_file_path)
 
-        pd.merge(new_node_df, annotation_df, on='id', how='left')
-
+        new_node_df = new_node_df.merge(annotation_df, on='id', how='left')
+        new_node_df = new_node_df.replace(np.nan, 'None', regex=True)
         return new_node_df
 
     # Method to get the number of interaction nodes connected to a node

@@ -50,7 +50,8 @@ class Controller:
                         core_details.iat[0, 0]))
                 print('Send data to Cytoscape.')
 
-                integration = CytoscapeIntegration(read_write_done[0], read_write_done[1], core_details)
+                integration = CytoscapeIntegration(read_write_done[0], read_write_done[1], core_details,
+                                                   interaction_or_edge)
                 # Call function to determine if cytoscape works
                 cytoscape_successful = integration.cytoscape_successful(update)
 

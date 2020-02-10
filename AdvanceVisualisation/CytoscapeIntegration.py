@@ -6,10 +6,11 @@ import simplejson
 
 
 class CytoscapeIntegration:
-    def __init__(self, node_df, edge_df, core_details):
+    def __init__(self, node_df, edge_df, core_details, interaction_or_edge):
         self.node_df = node_df
         self.edge_df = edge_df
         self.core_details = core_details
+        self.interaction_or_edge = interaction_or_edge
         self.json_file_name = 'json_file.json'
         self.json_file_path = os.path.join('OutputData/', self.json_file_name)
 
@@ -111,14 +112,15 @@ class CytoscapeIntegration:
 
             my_style.update_defaults(new_styles)
 
-            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
-                                             mappings=order_colour_key_value_pair)
+            if self.interaction_or_edge == 1:
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
+                                                 mappings=order_colour_key_value_pair)
 
-            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SIZE',
-                                             mappings=order_size_key_value_pair)
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SIZE',
+                                                 mappings=order_size_key_value_pair)
 
-            my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SHAPE',
-                                             mappings=order_shape_key_value_pair)
+                my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_SHAPE',
+                                                 mappings=order_shape_key_value_pair)
 
             my_style.create_discrete_mapping(column='order', col_type='String',
                                              vp='EDGE_STROKE_UNSELECTED_PAINT',
