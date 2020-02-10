@@ -283,6 +283,13 @@ class ReadWriteData:
                                                                        'edge label', 'Alpha', 'Beta', 'order']),
                                                  ignore_index=True)
 
+                        edge_df = edge_df.append(pd.DataFrame([[node, snp_b_cell_value,
+                                                                snp_a_cell_value,
+                                                                node, node, new_alpha, new_beta, new_order]],
+                                                              columns=['id', 'source', 'target', 'interaction',
+                                                                       'edge label', 'Alpha', 'Beta', 'order']),
+                                                 ignore_index=True)
+
                     elif int_order == 3:
                         snp_a_cell_value = df.at[index, 'SNP_A']
                         snp_b_cell_value = df.at[index, 'SNP_B']
@@ -346,8 +353,8 @@ class ReadWriteData:
                                                                        'edge label', 'Alpha', 'Beta', 'order']),
                                                  ignore_index=True)
                         # Add the new edge-node pair to the DataFrame
-                        edge_df = edge_df.append(pd.DataFrame([[node, snp_b_cell_value,
-                                                                snp_b_cell_value,
+                        edge_df = edge_df.append(pd.DataFrame([[node, snp_d_cell_value,
+                                                                snp_a_cell_value,
                                                                 node, node, new_alpha, new_beta, new_order]],
                                                               columns=['id', 'source', 'target', 'interaction',
                                                                        'edge label', 'Alpha', 'Beta', 'order']),
@@ -618,26 +625,32 @@ class ReadWriteData:
         # Create a new edge DataFrame with the non-duplicated nodes
         temp_edge_df = pd.concat([edge_df, existing_df], axis=0)
         # Remove duplicates and keep only the first occurrence of the node
-        print(len(temp_edge_df))
         if interaction_or_edge == 1:
             new_edge_df = temp_edge_df.drop_duplicates(subset=['target', 'source', 'id'], keep='first')
         elif interaction_or_edge == 2:
             new_edge_df = temp_edge_df.drop_duplicates(subset=['target', 'source', 'id', 'edge label'], keep='first') \
                 .reset_index(drop=True)
-            print(new_edge_df)
+
             i = len(new_edge_df) - 1
             for index, row in new_edge_df.iterrows():
-                target = edge_df.at[i, 'target']
-                source = edge_df.at[i, 'source']
-                if target == source:
-                    new_edge_df = new_edge_df.drop(i).reset_index(drop=True)
-                    i = len(new_edge_df) - 1
-                    print('index: ', index, target, ' ', source)
+                temp_node = new_edge_df.at[i, 'target']
+                filtered_df = new_edge_df.loc[((new_edge_df['target'] == temp_node)
+                                               & (new_edge_df['source'] == temp_node))] \
+                    .reset_index(drop=True)
 
-                if index == len(new_edge_df) - 1:
+                if not filtered_df.empty:
+                    # Remove duplicates
+                    new_edge_df = new_edge_df.loc[((new_edge_df['target'] != temp_node)
+                                                   & (new_edge_df['source'] != temp_node))].reset_index(drop=True)
+                    i = len(new_edge_df) - 1
+                else:
+                    i = i - 1
+
+                # exit for loop once the correct new_node_df is made
+                if i == 0:
                     break
 
-        print(new_edge_df)
+        # print(new_edge_df)
         return new_edge_df.reset_index(drop=True)
 
     def get_merged_new_node_df(self, new_node_df, connection_count_df):
