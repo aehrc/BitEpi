@@ -6,8 +6,9 @@ class ReadWriteData:
     input_type = ''
     order = ''
 
-    def __init__(self, input_file):
+    def __init__(self, input_file, annotation_file):
         self.input_file = input_file
+        self.annotation_file = annotation_file
         self.int_id = 0
 
     # Method to validate the input file
@@ -283,13 +284,6 @@ class ReadWriteData:
                                                                        'edge label', 'Alpha', 'Beta', 'order']),
                                                  ignore_index=True)
 
-                        edge_df = edge_df.append(pd.DataFrame([[node, snp_b_cell_value,
-                                                                snp_a_cell_value,
-                                                                node, node, new_alpha, new_beta, new_order]],
-                                                              columns=['id', 'source', 'target', 'interaction',
-                                                                       'edge label', 'Alpha', 'Beta', 'order']),
-                                                 ignore_index=True)
-
                     elif int_order == 3:
                         snp_a_cell_value = df.at[index, 'SNP_A']
                         snp_b_cell_value = df.at[index, 'SNP_B']
@@ -362,6 +356,15 @@ class ReadWriteData:
 
         # print(edge_df)
         return edge_df
+
+    # Merge node df with annotations
+    def create_df_with_annotations(self, new_node_df):
+        annotation_file_path = os.path.join('OutputData/', self.annotation_file)
+        annotation_df = pd.read_csv(annotation_file_path)
+
+        pd.merge(new_node_df, annotation_df, on='id', how='left')
+
+        return new_node_df
 
     # Method to get the number of interaction nodes connected to a node
     def create_connection_count_df(self, correct_edge_df):
@@ -709,6 +712,7 @@ class ReadWriteData:
             print('No existing node file found. Creating a new file nodes.csv')
             new_node_df = self.check_node_duplicates(node_df, node_df)
             new_node_df = self.get_merged_new_node_df(new_node_df, connection_count_df)
+            new_node_df = self.create_df_with_annotations(new_node_df)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = new_node_df
         else:
@@ -718,6 +722,7 @@ class ReadWriteData:
             # Get a new DataFrame without any duplicated nodes
             new_node_df = self.check_node_duplicates(node_df, existing_df)
             new_node_df = self.get_merged_new_node_df(new_node_df, connection_count_df)
+            new_node_df = self.create_df_with_annotations(new_node_df)
             os.remove(node_file_path)
             new_node_df.to_csv(node_file_path, encoding='utf-8', index=False)
             correct_node_df = new_node_df

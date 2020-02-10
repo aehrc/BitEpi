@@ -33,12 +33,14 @@ class Controller:
     # Sorta send a update True or false
     # If false then make the standard set network otherwise update accordingly
     def perform_core_functionality(self, core_details, update, interaction_or_edge):
-        read_write_data = ReadWriteData(core_details.iat[0, 0])
+        read_write_data = ReadWriteData(core_details.iat[0, 0], core_details.iat[0, 1])
         valid = read_write_data.validate_input_file()
-        # TODO validate annotation file and join with node file
         if valid:
             print('The input file, {}, has been successfully validated.'
                   .format(core_details.iat[0, 0]))
+
+            print('The annotation file, {}, has been successfully loaded.'
+                  .format(core_details.iat[0, 1]))
 
             read_write_done = read_write_data.read_data_from_csv(interaction_or_edge)
             if read_write_done[2]:

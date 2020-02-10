@@ -18,9 +18,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '-bfile', required=True,
                         help='Argument in the form of: -i <input_file.csv>')
+    parser.add_argument('-a', '-afile', required=True, help='Argument in the form of: -a <annotation_file.csv>')
     args = vars(parser.parse_args())
     input_file = args['i']
-    details_df = pd.DataFrame([[input_file, True]], columns=['input_file', 'reset'])
+    annotation_file = args['a']
+    details_df = pd.DataFrame([[input_file, annotation_file, True]], columns=['input_file', 'annotation_file', 'reset'])
     controller = Controller()
     controller.perform_core_functionality(details_df)
 

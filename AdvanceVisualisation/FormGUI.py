@@ -72,6 +72,7 @@ class FormGUI:
 
         node_color_list = ['Order', 'Type', 'None']
         node_colour_variable = tk.StringVar(view_frame)
+        # TODO dont have this if edge data
         node_colour_variable.set(node_color_list[0])
         node_colour_options = tk.OptionMenu(view_frame, node_colour_variable, *node_color_list,
                                             command=lambda x: self.node_colour(node_colour_variable.get(),
