@@ -1,3 +1,4 @@
+# Main method to start the program
 import argparse
 import pandas as pd
 
@@ -7,12 +8,14 @@ from FormGUI import FormGUI
 from Controller import Controller
 
 
+# To call the GUI
 def gui_main():
     controller = Controller()
     form_details = controller.perform_form_functionality()
     controller.perform_core_functionality(form_details[0], form_details[1], form_details[2])
 
 
+# Console based program
 def main():
     # Read in the arguments and check for validity
     parser = argparse.ArgumentParser()

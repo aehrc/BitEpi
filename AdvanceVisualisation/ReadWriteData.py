@@ -1,3 +1,4 @@
+# Class containing the main functionality i.e model
 import os
 import pandas as pd
 import numpy as np
@@ -125,6 +126,7 @@ class ReadWriteData:
         # print(node_df)
         return node_df
 
+    # Method to create the node DataFrame for interaction mode
     def create_node_df(self, df, int_order):
         # A DataFrame with the interaction node
         # (concat of all the names of the gene) and SNPs
@@ -195,7 +197,7 @@ class ReadWriteData:
         # print(node_df)
         return node_df
 
-    # Method to create the edge DataFrame for interaction node mode
+    # Method to create the edge DataFrame for interaction network type
     def create_interaction_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
@@ -247,7 +249,7 @@ class ReadWriteData:
         # print(edge_df)
         return edge_df
 
-    # Method to create the edge DataFrame
+    # Method to create the edge DataFrame when the network type is Edge
     def create_edge_df(self, df, int_order):
         # A DataFrame with all the nodes:
         # individual SNP -> interaction node
@@ -372,7 +374,7 @@ class ReadWriteData:
         connection_count_df = pd.DataFrame(columns=['id', 'count'])
         for index, row in correct_edge_df.iterrows():
             temp_node = correct_edge_df.at[index, 'target']
-            # TODO Lengths must match to compare??
+            # TODO check the error saying 'lengths must match to compare'
             count = str(correct_edge_df.loc[correct_edge_df.target == temp_node, 'target'].count())
             connection_count_df = connection_count_df.append(pd.DataFrame([[temp_node, count]]
                                                                           , columns=['id', 'count'])
@@ -657,6 +659,7 @@ class ReadWriteData:
         # print(new_edge_df)
         return new_edge_df.reset_index(drop=True)
 
+    # Method to merge the connnection count DataFrame and node_df
     def get_merged_new_node_df(self, new_node_df, connection_count_df):
         if order != '1':
             new_node_df = new_node_df.merge(connection_count_df, how='left')
@@ -664,8 +667,8 @@ class ReadWriteData:
 
         return new_node_df
 
-    # Method to write data in the correct format to csv files
-    def write_data_to_csv(self, node_df, edge_df, int_order, interaction_or_edge):
+    # Method to write data in the correct format
+    def get_correctly_fomatted_dataframes(self, node_df, edge_df, int_order, interaction_or_edge):
         data_written_to_csv = True
         node_file_name = 'nodes.csv'
         edge_file_name = 'edges.csv'
@@ -734,7 +737,7 @@ class ReadWriteData:
         return data_written
 
     # Method to read in data and write data from and to a csv file
-    def read_data_from_csv(self, interaction_or_edge):
+    def get_dataframes(self, interaction_or_edge):
         read_write_done = True
 
         file_path = os.path.join('../sampleData/', self.input_file)
@@ -758,7 +761,7 @@ class ReadWriteData:
                 read_write_done = False
                 print('Error the newly created DataFrames are empty.')
             else:
-                data_written = self.write_data_to_csv(node_df, edge_df, int_order, interaction_or_edge)
+                data_written = self.get_correctly_fomatted_dataframes(node_df, edge_df, int_order, interaction_or_edge)
                 if not data_written[2]:
                     read_write_done = False
                     print('Error could not write data to the csv file/s!')

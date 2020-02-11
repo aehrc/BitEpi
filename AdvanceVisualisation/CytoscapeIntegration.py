@@ -1,3 +1,4 @@
+# Class to send data to Cytoscape in the form of a json file
 import os
 from py2cytoscape.data.cyrest_client import CyRestClient
 from IPython.display import Image
@@ -14,7 +15,7 @@ class CytoscapeIntegration:
         self.json_file_name = 'json_file.json'
         self.json_file_path = os.path.join('OutputData/', self.json_file_name)
 
-    # Method to convert the dataframes to a json object and save as a .json file
+    # Method to convert the DataFrames to a json object and save as a .json file
     def dataframe_to_json(self):
 
         # Create new node and edge dictionaries
@@ -28,6 +29,7 @@ class CytoscapeIntegration:
             temp_node_dic = {'data': node_dic[i], 'selected': False}
             complete_node_list.append(temp_node_dic)
 
+        # Add edge_dic rows as new individual dictionaries to complete_edge_list
         for i in range(len(edge_dic)):
             temp_edge_dic = {'data': edge_dic[i], 'selected': False}
             complete_edge_list.append(temp_edge_dic)
@@ -39,10 +41,13 @@ class CytoscapeIntegration:
         # Complete dictionary of data to be converted to json file
         full_dict = {'data': name_dic, 'elements': elements_dic}
 
+        # Write data to json file in an ordered format
         with open(self.json_file_path, 'w') as outfile:
             json.dump(full_dict, outfile, sort_keys=True, indent=4)
 
+    # Method to create the network and add styles
     def cytoscape_successful(self, update):
+
         cytoscape_successful = True
 
         # Create client
@@ -50,13 +55,14 @@ class CytoscapeIntegration:
         # Clear current session
         cy.session.delete()
 
-        # Convert dataframe to json file and save file
+        # Convert DataFrame to json file and save file
         self.dataframe_to_json()
 
-        # Create edge network from json file
+        # Create network from json file
         node_edge_network = cy.network.create_from(self.json_file_path)
 
         cy.layout.apply(network=node_edge_network)
+
         # Add styles to the network
         my_style = cy.style.create('my_style')
 
@@ -94,6 +100,8 @@ class CytoscapeIntegration:
             '4': 'Hexagon'
         }
 
+        # If the GUI is being loaded for the first time
+        # Then create network with 'default' styles
         if not update:
             new_styles = {
                 'NODE_FILL_COLOR': '#363636',
@@ -112,6 +120,7 @@ class CytoscapeIntegration:
 
             my_style.update_defaults(new_styles)
 
+            # Add these styles only if the network type is Interaction
             if self.interaction_or_edge == 1:
                 my_style.create_discrete_mapping(column='order', col_type='String', vp='NODE_FILL_COLOR',
                                                  mappings=order_colour_key_value_pair)
