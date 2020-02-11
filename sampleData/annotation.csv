@@ -1,0 +1,12 @@
+Overlap,Overlap_details,Known_Phenotype,Synonymous,Upstream_nearest_genomic_feature,Downstream_nearest_genomic_feature,Distance_to_nearest_upstream,Distance_to_nearest_downstream,Overlapping_genetic_feature_name,MAF,Rank
+Protein_coding,Enhancer,None,Synonymous,Temp_Feature1,Temp_Feature12,0.112,1.11,2.1,Gene_name1,1
+Protein_coding,Promoter,None,Non_Synonymous,Temp_Feature2,Temp_Feature13,0.113,1.12,2.2,Gene_name2,2
+Protein_coding,Exone,None,None,Temp_Feature3,Temp_Feature14,0.114,1.13,2.3,Gene_name3,3
+Protein_coding,3_UTR,None,Synonymous,Temp_Feature4,Temp_Feature15,0.115,1.14,2.4,Gene_name4,4
+Protein_coding,5_UTR,None,Non_Synonymous,Temp_Feature5,Temp_Feature16,0.116,1.15,2.5,Gene_name5,5
+Protein_coding,Intron,None,None,Temp_Feature6,Temp_Feature17,0.117,1.16,2.6,Gene_name6,6
+Non_coding,MIR,None,Synonymous,Temp_Feature7,Temp_Feature18,0.118,1.17,2.7,Gene_name7,7
+Non_coding,rRNA,None,Non_Synonymous,Temp_Feature8,Temp_Feature19,0.119,1.18,2.8,Gene_name8,8
+Non_coding,tRNA,None,None,Temp_Feature9,Temp_Feature20,0.1111,1.19,2.9,Gene_name9,9
+Non_coding,LNC,None,Synonymous,Temp_Feature10,Temp_Feature21,0.1112,1.21,2.12,Gene_name10,10
+Intergenic,Intergenic,None,Non_Synonymous,Temp_Feature11,Temp_Feature22,0.1113,1.22,2.23,Gene_name11,11
