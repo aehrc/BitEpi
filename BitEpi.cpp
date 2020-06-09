@@ -1,42 +1,5 @@
-
-// Uncomment below line to perform performance test and see accurate timing of different parts of the program.
-// It is only used for performance testing and may not be maintained 
-//#define PTEST
-
-//#define DEBUG
-
-// In order to compile BitEpi in VisualStudio we define a pthread empty shell here
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
-typedef int pthread_mutex_t;
-int pthread_mutex_trylock(pthread_mutex_t *x)
-{
-	if (*x == 0)
-	{
-		*x = 1;
-		return 0;
-	}
-	else
-		return 1;
-}
-void pthread_mutex_init(pthread_mutex_t *x, int *y)
-{
-	*x = 0;
-}
-typedef int pthread_t;
-typedef int pthread_attr_t;
-void pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg)
-{
-	(*start_routine)(arg);
-}
-void pthread_join(pthread_t thread, void **retval)
-{
-	return;
-}
-#else
 #include "pthread.h"
 #include "unistd.h"
-#endif
 
 #include "stdio.h"
 #include "stdlib.h"
@@ -53,10 +16,6 @@ void pthread_join(pthread_t thread, void **retval)
 #define MIN_COMB_IN_JOB 9000.0
 #define MIN_TOP 1000
 
-#ifdef PTEST
-clock_t elapse[100];
-#endif
-
 typedef unsigned char uint8;
 typedef unsigned short int uint16;
 typedef unsigned int uint32;
@@ -65,41 +24,52 @@ typedef int int32;
 
 typedef unsigned int varIdx;
 typedef unsigned short int sampleIdx; // This type used in contingency table. This table should be kept in the cache so choose the smallest possible type here. Note that short int is 16 bit and can deal with up to 2^16 (~65,000) samples.
-typedef unsigned long long int word; // for parallel processing
+typedef unsigned long long int word;  // for parallel processing
 
 // we use 2 bits (4 states) to represent a genotype. However a genotype has only 3 states.
 // for 4-SNP, blow table is used to translate (4 states)^(4 SNPs) state to (3 states)^(4 SNPs)
-const uint8 cti[81] = { 0,1,2,4,5,6,8,9,10,16,17,18,20,21,22,24,25,26,32,33,34,36,37,38,40,41,42,64,65,66,68,69,70,72,73,74,80,81,82,84,85,86,88,89,90,96,97,98,100,101,102,104,105,106,128,129,130,132,133,134,136,137,138,144,145,146,148,149,150,152,153,154,160,161,162,164,165,166,168,169,170 };
+const uint8 cti[81] = {0, 1, 2, 4, 5, 6, 8, 9, 10, 16, 17, 18, 20, 21, 22, 24, 25, 26, 32, 33, 34, 36, 37, 38, 40, 41, 42, 64, 65, 66, 68, 69, 70, 72, 73, 74, 80, 81, 82, 84, 85, 86, 88, 89, 90, 96, 97, 98, 100, 101, 102, 104, 105, 106, 128, 129, 130, 132, 133, 134, 136, 137, 138, 144, 145, 146, 148, 149, 150, 152, 153, 154, 160, 161, 162, 164, 165, 166, 168, 169, 170};
 const uint32 byte_in_word = sizeof(word);
 
 #define MAX_ORDER 4
 template <uint32_t EXP>
 uint32_t integerPow(uint32_t x)
 {
-	return integerPow<EXP-1>(x)*x;
+	return integerPow<EXP - 1>(x) * x;
 }
-template<>
-uint32_t integerPow<1>(uint32_t x){return x;}
-template<>
-uint32_t integerPow<0>(uint32_t){return 1;}
-#define P2(X) (X*X)
-#define P3(X) (X*X*X)
-#define P4(X) (X*X*X*X)
+template <>
+uint32_t integerPow<1>(uint32_t x) { return x; }
+template <>
+uint32_t integerPow<0>(uint32_t) { return 1; }
+#define P2(X) (X * X)
+#define P3(X) (X * X * X)
+#define P4(X) (X * X * X * X)
 
-#define ERROR(X) {printf("\n *** ERROR: %s (line:%u - File %s)\n", X, __LINE__, __FILE__); exit(0);}
-#define NULL_CHECK(X) {if(!X) {printf("\n *** ERROR: %s is null (line:%u - File %s)\n", #X, __LINE__, __FILE__); exit(0);}}
+#define ERROR(X)                                                                 \
+	{                                                                            \
+		printf("\n *** ERROR: %s (line:%u - File %s)\n", X, __LINE__, __FILE__); \
+		exit(0);                                                                 \
+	}
+#define NULL_CHECK(X)                                                                         \
+	{                                                                                         \
+		if (!X)                                                                               \
+		{                                                                                     \
+			printf("\n *** ERROR: %s is null (line:%u - File %s)\n", #X, __LINE__, __FILE__); \
+			exit(0);                                                                          \
+		}                                                                                     \
+	}
 
 double ***tripletBeta;
 double **PairBeta;
 double *SnpBeta;
 
-template <class D1,class D2>
+template <class D1, class D2>
 double difftime(D1 end, D2 begin)
 {
-	return std::chrono::duration<double,std::ratio<1,1>>(end - begin).count();
+	return std::chrono::duration<double, std::ratio<1, 1>>(end - begin).count();
 }
 
-double  factorial(uint32 n)
+double factorial(uint32 n)
 {
 	double res = 1;
 	for (uint32 i = 1; i <= n; i++)
@@ -117,15 +87,19 @@ double Combination(uint32 v, uint32 o)
 	if (o == v)
 		return 1;
 
-	if (o > v) 
+	if (o > v)
 		return 0;
 
 	switch (o)
 	{
-	case 2: return (nc * (nc - 1)) / 2;
-	case 3: return (nc * (nc - 1) * (nc - 2)) / 6;
-	case 4: return (nc * (nc - 1) * (nc - 2) * (nc - 3)) / 24;
-	default: ERROR("Does not support combination above 4");
+	case 2:
+		return (nc * (nc - 1)) / 2;
+	case 3:
+		return (nc * (nc - 1) * (nc - 2)) / 6;
+	case 4:
+		return (nc * (nc - 1) * (nc - 2) * (nc - 3)) / 24;
+	default:
+		ERROR("Does not support combination above 4");
 	}
 }
 
@@ -135,12 +109,12 @@ struct JOB
 	uint32 s[2];
 	uint32 e[2];
 	double comb;
-	double diff; // Difference to average.
+	double diff;  // Difference to average.
 	double aDiff; // Accumulative difference to average.
 	uint64 counted;
 	void Print()
-	{ 
-		printf("\n %6u (%6u,%6u) (%6u,%6u) %15.0f %15.0f %15.0f", id+1, s[0]+1, s[1]+1, e[0]+1, e[1]+1, comb, diff, aDiff);
+	{
+		printf("\n %6u (%6u,%6u) (%6u,%6u) %15.0f %15.0f %15.0f", id + 1, s[0] + 1, s[1] + 1, e[0] + 1, e[1] + 1, comb, diff, aDiff);
 	}
 	void PrintHead()
 	{
@@ -155,19 +129,18 @@ struct JOB
 	{
 		printf("\nJob:%6u process %15.0f SNPs (%10u ... %10u)", id + 1, comb, s[0] + 1, e[0] + 1);
 	}
-	
 };
 
 struct ARGS
 {
-	bool computeBeta[MAX_ORDER]; // [N] should we compute beta of order of N
-	bool printBeta[MAX_ORDER];   // [N] should we report beta of order of N if it meets the threshold b[N]
-	bool saveBeta[MAX_ORDER];    // [N] should we save beta of order of N to compute alpha of order N+1
-	bool computeAlpha[MAX_ORDER];// [N] should we compute alpha of order of N
-	bool printAlpha[MAX_ORDER];  // [N] should we report alpha of order of N in it meets the threshold a[N]
-	bool best;                   // should we compute the best intractions for each SNPs
-	bool betaGiven[MAX_ORDER];   // [N] if beta N is given in the parameters
-	bool alphaGiven[MAX_ORDER];  // [N] if alpha N is given in the parameters
+	bool computeBeta[MAX_ORDER];  // [N] should we compute beta of order of N
+	bool printBeta[MAX_ORDER];	  // [N] should we report beta of order of N if it meets the threshold b[N]
+	bool saveBeta[MAX_ORDER];	  // [N] should we save beta of order of N to compute alpha of order N+1
+	bool computeAlpha[MAX_ORDER]; // [N] should we compute alpha of order of N
+	bool printAlpha[MAX_ORDER];	  // [N] should we report alpha of order of N in it meets the threshold a[N]
+	bool best;					  // should we compute the best intractions for each SNPs
+	bool betaGiven[MAX_ORDER];	  // [N] if beta N is given in the parameters
+	bool alphaGiven[MAX_ORDER];	  // [N] if alpha N is given in the parameters
 
 	double beta[MAX_ORDER];
 	double alpha[MAX_ORDER];
@@ -177,32 +150,32 @@ struct ARGS
 	bool inputGiven;
 	bool readBfile;
 	// In the local mode (default) the program will parallelize the outter loop over all 'numThreads' and run all of them in parallele.
-	// Basically in the default mode the numJob is set to numThreads. 
+	// Basically in the default mode the numJob is set to numThreads.
 	// In the cloud/cluster mode (-c) the program will parallelize the outter loop over all 'numJobs' and run 'numThreads' jobs in parallele.
 	// The first and the last job index to run are 'firstJobIdx' and 'firstJobIdx+numThreads-1' respectively
 	bool clusterMode;
 	bool clusterAlpha;
 	uint32 clusterOrder;
 
-	uint32 numJobs;     // the best value is the total number of threads in the cluster.
-	JOB    *jobs;
-	
-	uint32 numThreads;  // Number of threads on the processing nodes; 
+	uint32 numJobs; // the best value is the total number of threads in the cluster.
+	JOB *jobs;
+
+	uint32 numThreads;	// Number of threads on the processing nodes;
 	uint32 firstJobIdx; // 0 <= firstJobIdx <= numJobs-1
-	uint32 lastJobIdx;  // firstJobIdx <= lastJobIdx <= numJobs-1
-	uint32 jobsToDo;    // number of jobs to do on this computer (could be less than number of threads)
+	uint32 lastJobIdx;	// firstJobIdx <= lastJobIdx <= numJobs-1
+	uint32 jobsToDo;	// number of jobs to do on this computer (could be less than number of threads)
 
 	double bufRatio;
-	bool topNbeta[MAX_ORDER]; // the the beta thrashold is top count
+	bool topNbeta[MAX_ORDER];  // the the beta thrashold is top count
 	bool topNalpha[MAX_ORDER]; // the the alpha thrashold is top count
-	
-	bool   master;
-	char   configFileName[1024];
-	char   clusterCmd[1024];
-	char   awsKey[1024];
-	char   sshCmd[1024];
-	char   scpCmd[1024];
-	bool   aws;
+
+	bool master;
+	char configFileName[1024];
+	char clusterCmd[1024];
+	char awsKey[1024];
+	char sshCmd[1024];
+	char scpCmd[1024];
+	bool aws;
 
 	uint32 maxOrder;
 	bool sort;
@@ -234,10 +207,10 @@ struct ARGS
 	{
 		if (jobs)
 		{
-			delete[]jobs;
+			delete[] jobs;
 		}
 	}
-	
+
 	void WorkloadDividerHigherOrder(uint32 order, uint32 numVar, uint32 numJobsToDivide)
 	{
 		uint32 lorder = order - 2;
@@ -262,10 +235,10 @@ struct ARGS
 				for (uint32 j = i + 1; j <= (numVar - order + 1); j++)
 				{
 					double comb = Combination(numVar - (j + 1), lorder);
-					
+
 					if ((sumComb + comb) >= avgJobNumCombinations)
 					{
-						if(aDiff < 0)
+						if (aDiff < 0)
 						{
 							jobs[idxJob].e[0] = i;
 							jobs[idxJob].e[1] = j;
@@ -277,8 +250,8 @@ struct ARGS
 							idxJob++;
 							if ((j + 1) == (numVar - order + 2)) // boarder condition
 							{
-								jobs[idxJob].s[0] = i+1;
-								jobs[idxJob].s[1] = i+2;
+								jobs[idxJob].s[0] = i + 1;
+								jobs[idxJob].s[1] = i + 2;
 							}
 							else
 							{
@@ -330,7 +303,7 @@ struct ARGS
 			jobs[idxJob].aDiff = aDiff;
 		}
 	}
-	
+
 	void WorkloadDivider2Snp(uint32 order, uint32 numVar, uint32 numJobsToDivide)
 	{
 		uint32 lorder = order - 1;
@@ -363,7 +336,7 @@ struct ARGS
 						jobs[idxJob].aDiff = aDiff;
 						remainingComb -= jobs[idxJob].comb;
 						idxJob++;
-						jobs[idxJob].s[0] = i+1;
+						jobs[idxJob].s[0] = i + 1;
 						sumComb = 0;
 					}
 					else // if(aDiff >= 0)
@@ -404,7 +377,7 @@ struct ARGS
 		jobs = new JOB[numJobsToDivide];
 		NULL_CHECK(jobs);
 
-		memset(jobs, 0, sizeof(JOB)*numJobsToDivide);
+		memset(jobs, 0, sizeof(JOB) * numJobsToDivide);
 
 		numComb = Combination(numVar, order);
 		avgJobNumCombinations = numComb / numJobsToDivide;
@@ -428,7 +401,7 @@ struct ARGS
 		}
 
 		printf("\n Breaking the program into similar sized jobs");
-		
+
 		if (order == 1) // 1-SNP
 		{
 			for (uint32 i = 0; i < numJobsToDivide; i++)
@@ -437,7 +410,7 @@ struct ARGS
 				jobs[i].e[0] = ((i + 1) * avgJobNumCombinations) - 1;
 				jobs[i].comb = avgJobNumCombinations;
 			}
-			jobs[numJobsToDivide-1].e[0] = numVar-1;
+			jobs[numJobsToDivide - 1].e[0] = numVar - 1;
 			jobs[numJobsToDivide - 1].comb = jobs[numJobsToDivide - 1].e[0] - jobs[numJobsToDivide - 1].s[0] + 1;
 		}
 		else if (order == 2) // 2-SNP Only breaks outer loop
@@ -463,7 +436,7 @@ struct ARGS
 		printf("\n");
 	}
 
-	void PrintHelp(char* exec)
+	void PrintHelp(char *exec)
 	{
 		printf("\n\n\n========================================================\n");
 		printf(" -i [path]  Input CSV file\n");
@@ -513,7 +486,7 @@ struct ARGS
 		return;
 	}
 
-	void Parse(int argc, char* argv[])
+	void Parse(int argc, char *argv[])
 	{
 		double d = -1;
 		uint32 o = 0;
@@ -548,7 +521,7 @@ struct ARGS
 								PrintHelp(argv[0]);
 							}
 							// set the threshold and print flag for beta
-							sprintf(clusterCmd, "-b%u %f", o+1, d);
+							sprintf(clusterCmd, "-b%u %f", o + 1, d);
 							beta[o] = d;
 							printBeta[o] = true;
 							if (beta[o] >= 1)
@@ -561,7 +534,8 @@ struct ARGS
 				}
 			}
 			// if this option is processed move to the next option
-			if (next) continue;
+			if (next)
+				continue;
 
 			// check if  flag is passed for any order
 			for (uint32 o = 0; o < MAX_ORDER; o++)
@@ -573,7 +547,7 @@ struct ARGS
 					computeBeta[o] = computeAlpha[o] = true;
 					alphaGiven[o] = true;
 					sprintf(clusterCmd, "%s -a%u", clusterCmd, o + 1);
-					if (o>0)
+					if (o > 0)
 						computeBeta[o - 1] = saveBeta[o - 1] = true;
 
 					// check if there is any threashold argument to this option
@@ -588,7 +562,7 @@ struct ARGS
 								PrintHelp(argv[0]);
 							}
 							// set the threshold and print flag for a
-							sprintf(clusterCmd, "-a%u %f", o+1, d);
+							sprintf(clusterCmd, "-a%u %f", o + 1, d);
 							alpha[o] = d;
 							printAlpha[o] = true;
 							if (alpha[o] >= 1)
@@ -600,7 +574,8 @@ struct ARGS
 					break;
 				}
 			}
-			if (next) continue;
+			if (next)
+				continue;
 
 			// read input file name
 			if (!strcmp(argv[i], "-i"))
@@ -678,7 +653,7 @@ struct ARGS
 				readBfile = true;
 				continue;
 			}
-			
+
 			// read best flag
 			if (!strcmp(argv[i], "-best"))
 			{
@@ -825,7 +800,7 @@ struct ARGS
 				else
 				{
 					printf("\n Please enter path to the key file");
-					PrintHelp(argv[0]); 
+					PrintHelp(argv[0]);
 				}
 				i++;
 				continue;
@@ -836,7 +811,7 @@ struct ARGS
 		}
 
 		// check arguments
-		
+
 		// There should be an input file in all cases
 		// if the output prefix does not pass we use default output prefix that is "OUTPUT_BitEpi"
 		if (!inputGiven)
@@ -845,7 +820,7 @@ struct ARGS
 			PrintHelp(argv[0]);
 		}
 
-		if(master && best)
+		if (master && best)
 		{
 			printf("\n best mode does not work in master mode yet");
 			PrintHelp(argv[0]);
@@ -895,13 +870,13 @@ struct ARGS
 				printf("\n In cluster mode only one analysis (alpha or beta) can be executed");
 				PrintHelp(argv[0]);
 			}
-			if(clusterOrder==0)
+			if (clusterOrder == 0)
 			{
 				printf("\n cluster mode works only for 2-SNP, 3-SNP and 4-SNP tests but not 1-SNP test");
 				PrintHelp(argv[0]);
 			}
 
-			if(numJobs==-1 || firstJobIdx==-1)
+			if (numJobs == -1 || firstJobIdx == -1)
 			{
 				printf("\n Specify number of jobs (-j) and first job index (-f) in cluster/cloud mode (-c presented)");
 				PrintHelp(argv[0]);
@@ -923,16 +898,20 @@ struct ARGS
 				computeBeta[o] = saveBeta[o] = computeAlpha[o] = true;
 			}
 
-		if (computeBeta[0]) maxOrder = 1;
-		if (computeBeta[1]) maxOrder = 2;
-		if (computeBeta[2]) maxOrder = 3;
-		if (computeBeta[3]) maxOrder = 4;
+		if (computeBeta[0])
+			maxOrder = 1;
+		if (computeBeta[1])
+			maxOrder = 2;
+		if (computeBeta[2])
+			maxOrder = 3;
+		if (computeBeta[3])
+			maxOrder = 4;
 
 		if (!maxOrder)
 		{
 			printf("\n No test to be performed.");
 			PrintHelp(argv[0]);
-		}	
+		}
 	}
 
 	void Print() // print the given option for debugging
@@ -976,19 +955,6 @@ struct ARGS
 				printf("\n alpha%u", o + 1);
 		}
 
-#ifdef DEBUG
-		printf("\n\n=========================================");
-		printf("\n Internal flags and values (For Debugging):");
-		printf("\n maxOrder        %u", maxOrder);
-		for (uint32 o = 0; o < MAX_ORDER; o++)
-		{
-			printf("\n computeBeta[%u]  %s", o + 1, computeBeta[o] ? "true" : "false");
-			printf("\n printBeta[%u]    %s", o + 1, printBeta[o] ? "true" : "false");
-			printf("\n saveBeta[%u]     %s", o + 1, saveBeta[o] ? "true" : "false");
-			printf("\n computeAlpha[%u] %s", o + 1, computeAlpha[o] ? "true" : "false");
-			printf("\n printAlpha[%u]   %s", o + 1, printAlpha[o] ? "true" : "false");
-		}
-#endif // DEBUG
 		printf("\n\n=========================================\n\n");
 	}
 };
@@ -1027,7 +993,6 @@ void AllocateBeta(varIdx n, ARGS args)
 				tripletBeta[i][j] = new double[n];
 				NULL_CHECK(tripletBeta[i][j]);
 			}
-
 		}
 	}
 }
@@ -1235,18 +1200,16 @@ public:
 			}
 		}
 	}
-
 };
 
 class Dataset
 {
 	// contigency table index translation
 	// note that 3 or 0b11 is not a valid genotype and should not be considered in Gini Computation.
-	uint64 CaseIndex(varIdx v, sampleIdx s) { return ((v * numByteCase) + s); }	// get the byte index of sample in data
-	uint64 CtrlIndex(varIdx v, sampleIdx s) { return ((v * numByteCtrl) + s); }	// get the byte index of sample in data
+	uint64 CaseIndex(varIdx v, sampleIdx s) { return ((v * numByteCase) + s); } // get the byte index of sample in data
+	uint64 CtrlIndex(varIdx v, sampleIdx s) { return ((v * numByteCtrl) + s); } // get the byte index of sample in data
 
 public:
-
 	uint32 order;
 
 	bool *labels;
@@ -1256,8 +1219,8 @@ public:
 	sampleIdx numCase;
 	sampleIdx numCtrl;
 
-	uint32 numWordCase;// number of machine word used to store Case data (each sample is a byte)
-	uint32 numWordCtrl;// number of machine word used to store Ctrl data (each sample is a byte)
+	uint32 numWordCase; // number of machine word used to store Case data (each sample is a byte)
+	uint32 numWordCtrl; // number of machine word used to store Ctrl data (each sample is a byte)
 
 	uint32 numByteCase; // numWordCase * sizeof(word)
 	uint32 numByteCtrl; // numWordCtrl * sizeof(word)
@@ -1306,8 +1269,10 @@ public:
 		f = fopen(fn, "r");
 		NULL_CHECK(f)
 
-			char ch;
-		for (ch = getc(f); ch != EOF; ch = getc(f)) if (ch == '\n') lines = lines + 1;
+		char ch;
+		for (ch = getc(f); ch != EOF; ch = getc(f))
+			if (ch == '\n')
+				lines = lines + 1;
 
 		fclose(f);
 
@@ -1319,27 +1284,29 @@ public:
 	*genoytypes contains a vector for each snp which contains the genotype each sample has for that snp.
 	*	0 is homozygous for reference, 1 is heterozygous, and 2 is homozygous for the variant
 	*/
-	void prepareDataset(std::vector<bool> &sampleClasses,std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
+	void prepareDataset(std::vector<bool> &sampleClasses, std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
 	{
 		numSamples = sampleClasses.size();
 		if (numSamples >= pow(2, sizeof(sampleIdx) * 8))
 			ERROR("Change sampleIdx type to support the number of samples exist in dataset");
 
 		numVariables = snpLabels.size();
-		numCase = std::count(sampleClasses.begin(),sampleClasses.end(),true);
+		numCase = std::count(sampleClasses.begin(), sampleClasses.end(), true);
 		numCtrl = numSamples - numCase;
-		
+
 		//prepare sample class labels array
 		labels = new bool[numSamples];
 		NULL_CHECK(labels);
-		std::copy(sampleClasses.begin(),sampleClasses.end(),labels);
-		
+		std::copy(sampleClasses.begin(), sampleClasses.end(), labels);
+
 		// find number of word and byte per variable in Case and Ctrl
 		numWordCase = numCase / byte_in_word;
 		numWordCtrl = numCtrl / byte_in_word;
 
-		if (numCase % byte_in_word) numWordCase++;
-		if (numCtrl % byte_in_word) numWordCtrl++;
+		if (numCase % byte_in_word)
+			numWordCase++;
+		if (numCtrl % byte_in_word)
+			numWordCtrl++;
 
 		numByteCase = numWordCase * sizeof(word);
 		numByteCtrl = numWordCtrl * sizeof(word);
@@ -1352,24 +1319,24 @@ public:
 		NULL_CHECK(wordCtrl[0]);
 
 		// convert to byte address
-		byteCase[0] = (uint8_t*)wordCase[0];
-		byteCtrl[0] = (uint8_t*)wordCtrl[0];
-		
+		byteCase[0] = (uint8_t *)wordCase[0];
+		byteCtrl[0] = (uint8_t *)wordCtrl[0];
+
 		//prepare the array of char*s for the names of each SNP
-		nameVariable = new char*[numVariables];
+		nameVariable = new char *[numVariables];
 		NULL_CHECK(nameVariable);
-		for(int i = 0; i < snpLabels.size();++i)
+		for (int i = 0; i < snpLabels.size(); ++i)
 		{
 			nameVariable[i] = new char[snpLabels[i].size() + 1];
 			strcpy(nameVariable[i], snpLabels[i].c_str());
-		}	
-		
+		}
+
 		//prepare the arrays of the variants of each sample
-		for(int SNP = 0; SNP < genotypes.size(); SNP++)
+		for (int SNP = 0; SNP < genotypes.size(); SNP++)
 		{
 			uint32_t idxCase = 0;
 			uint32_t idxCtrl = 0;
-			
+
 			for (sampleIdx i = 0; i < numSamples; i++)
 			{
 				if (sampleClasses[i])
@@ -1384,52 +1351,52 @@ public:
 				}
 			}
 		}
-		
-		std::cout << "There are " << snpLabels.size() << " SNPs" <<std::endl;
-		std::cout << "There are " << sampleClasses.size() << " samples" <<std::endl;
-		std::cout << "There are " << numCase << " Cases" <<std::endl;
-		std::cout << "There are " << numCtrl << " Controls" <<std::endl;
+
+		std::cout << "There are " << snpLabels.size() << " SNPs" << std::endl;
+		std::cout << "There are " << sampleClasses.size() << " samples" << std::endl;
+		std::cout << "There are " << numCase << " Cases" << std::endl;
+		std::cout << "There are " << numCtrl << " Controls" << std::endl;
 	}
 
 	void ReadDatasetBfile(const char *fn)
 	{
 		std::string filename = std::string(fn);
 		//if the file ends with .bed strip it
-		if(filename.size()>4&&filename.compare(filename.size()-4,4,".bed")==0)
-			filename.erase(filename.end()-4, filename.end());
-		
+		if (filename.size() > 4 && filename.compare(filename.size() - 4, 4, ".bed") == 0)
+			filename.erase(filename.end() - 4, filename.end());
+
 		std::cout << "loading dataset " << filename << ".bed, "
-		<< filename << ".bim, " << filename << ".fam" << std::endl;
-		
+				  << filename << ".bim, " << filename << ".fam" << std::endl;
+
 		std::vector<bool> sampleClasses;
 		std::vector<std::string> snpLabels;
 		std::vector<std::vector<uint8_t>> genotypes;
 		//get variant labels
-		std::ifstream variantFile(filename+".bim");
-		if(!variantFile.is_open())
+		std::ifstream variantFile(filename + ".bim");
+		if (!variantFile.is_open())
 			ERROR("could not open associated .bim file");
 		std::string line;
 		while (std::getline(variantFile, line))
 		{
 			//find delimeter
 			char delim = ' ';
-			if(std::count(line.begin(),line.end(),'\t')==5)
+			if (std::count(line.begin(), line.end(), '\t') == 5)
 				delim = '\t';
-			line = line.substr(line.find(delim)+1);//remove first field			
-			snpLabels.push_back(line.substr(0,line.find(delim)));
+			line = line.substr(line.find(delim) + 1); //remove first field
+			snpLabels.push_back(line.substr(0, line.find(delim)));
 		}
 		variantFile.close();
 
-		//get sample classes		
-		std::ifstream sampleFile(filename+".fam");
-		if(!sampleFile.is_open())
+		//get sample classes
+		std::ifstream sampleFile(filename + ".fam");
+		if (!sampleFile.is_open())
 			ERROR("could not open associated .fam file");
 		while (std::getline(sampleFile, line))
 		{
-			std::string classLabel = line.substr(line.find_last_not_of(" \v\f\t\r\n"),1);
-			if(classLabel=="1")
+			std::string classLabel = line.substr(line.find_last_not_of(" \v\f\t\r\n"), 1);
+			if (classLabel == "1")
 				sampleClasses.push_back(false);
-			else if (classLabel=="2")
+			else if (classLabel == "2")
 				sampleClasses.push_back(true);
 			else
 				ERROR("Phenotype type value not control (1) or case (2) in .fam file")
@@ -1437,42 +1404,42 @@ public:
 		sampleFile.close();
 
 		//get sample variants
-		std::ifstream bedFile(filename+".bed",std::ios::binary);
-		if(!bedFile.is_open())
+		std::ifstream bedFile(filename + ".bed", std::ios::binary);
+		if (!bedFile.is_open())
 			ERROR("could not open associated .bed file");
-		uint32_t chunkSize = sampleClasses.size()/4;
-		if(sampleClasses.size()%4!=0)
+		uint32_t chunkSize = sampleClasses.size() / 4;
+		if (sampleClasses.size() % 4 != 0)
 			chunkSize++;
-		char * buffer = new char[chunkSize];
+		char *buffer = new char[chunkSize];
 		genotypes.reserve(snpLabels.size());
 		//read and discard 3 magic bytes at the start of the file
-		bedFile.read(buffer,3);
-		for(int i = 0;i < snpLabels.size();++i)
+		bedFile.read(buffer, 3);
+		for (int i = 0; i < snpLabels.size(); ++i)
 		{
-			bedFile.read(buffer,chunkSize);
-			if(!bedFile.good())
+			bedFile.read(buffer, chunkSize);
+			if (!bedFile.good())
 				ERROR("bed file does not contain enough bytes")
 			genotypes.push_back(std::vector<uint8_t>());
 			std::vector<uint8_t> &gs = genotypes.back();
-			gs.reserve(chunkSize*4);
-			for(int j = 0; j<chunkSize;++j)
+			gs.reserve(chunkSize * 4);
+			for (int j = 0; j < chunkSize; ++j)
 			{
-				//genotypes stored as two bit value 
+				//genotypes stored as two bit value
 				//00 homozygous minor allele recorded as 2
 				//01 missing value recorded as homozygous major allele recorded as 0
 				//10 heterogenous recorded as 1
 				//11 homozygous major allele recorded as 0
-				static const uint8_t convert[4] = {2,0,1,0};
-				gs.push_back(convert[buffer[j]&3]);
-				gs.push_back(convert[(buffer[j]>>2)&3]);
-				gs.push_back(convert[(buffer[j]>>4)&3]);
-				gs.push_back(convert[(buffer[j]>>6)&3]);
+				static const uint8_t convert[4] = {2, 0, 1, 0};
+				gs.push_back(convert[buffer[j] & 3]);
+				gs.push_back(convert[(buffer[j] >> 2) & 3]);
+				gs.push_back(convert[(buffer[j] >> 4) & 3]);
+				gs.push_back(convert[(buffer[j] >> 6) & 3]);
 			}
 			//discard the last samples that were created to pad out the 8 bits
 			gs.resize(sampleClasses.size());
 		}
-		
-		prepareDataset(sampleClasses,snpLabels,genotypes);
+
+		prepareDataset(sampleClasses, snpLabels, genotypes);
 		return;
 	}
 
@@ -1484,7 +1451,7 @@ public:
 		std::vector<bool> sampleClasses;
 		std::vector<std::string> snpLabels;
 		std::vector<std::vector<uint8_t>> genotypes;
-		
+
 		CsvParser *csvparser = CsvParser_new(fn, ",", 1);
 		CsvRow *row;
 
@@ -1501,10 +1468,10 @@ public:
 			uint32 read = sscanf(headerFields[i + 1], "%2u", &label);
 			if (read != 1 || label > 1)
 			{
-				printf("\n Given class label for %uth sample is %s", i+1, headerFields[i + 1]);
+				printf("\n Given class label for %uth sample is %s", i + 1, headerFields[i + 1]);
 				ERROR("Class lable shold be 0 or 1 for controls and cases");
 			}
-			sampleClasses.push_back(label==1);
+			sampleClasses.push_back(label == 1);
 		}
 
 		uint variable = 0;
@@ -1514,13 +1481,13 @@ public:
 
 			if (CsvParser_getNumFields(row) != (sampleColumns + 1))
 			{
-				printf("\n For %uth SNP there are %u genotypes but there are %u samples in the first line", variable+1, CsvParser_getNumFields(row) - 1, sampleColumns);
+				printf("\n For %uth SNP there are %u genotypes but there are %u samples in the first line", variable + 1, CsvParser_getNumFields(row) - 1, sampleColumns);
 				ERROR("Number of genotypes does not match the number of samples in the first line");
 			}
 			snpLabels.push_back(std::string(rowFields[0]));
 			genotypes.push_back(std::vector<uint8_t>());
 			genotypes[variable].reserve(sampleColumns);
-			
+
 			for (sampleIdx i = 0; i < sampleColumns; i++)
 			{
 				uint8_t gt;
@@ -1539,7 +1506,7 @@ public:
 
 		CsvParser_destroy(csvparser);
 
-		prepareDataset(sampleClasses,snpLabels,genotypes);
+		prepareDataset(sampleClasses, snpLabels, genotypes);
 		return;
 	}
 
@@ -1555,7 +1522,7 @@ public:
 
 		for (uint32 i = 0; i < numSamples; i++)
 		{
-			fprintf(f, ",%u", labels[i]?1:0);
+			fprintf(f, ",%u", labels[i] ? 1 : 0);
 		}
 		fprintf(f, "\n");
 
@@ -1590,7 +1557,10 @@ public:
 		numCase = 0;
 		numCtrl = 0;
 		for (sampleIdx i = 0; i < numSamples; i++)
-			if (labels[i]) numCase++; else numCtrl++;
+			if (labels[i])
+				numCase++;
+			else
+				numCtrl++;
 		setBeta = P2((double)numCase / numSamples) + P2((double)numCtrl / numSamples);
 		printf("\n Purity of the whole dataset (B_0) is %f (baseline for Beta)", setBeta);
 	}
@@ -1605,8 +1575,8 @@ public:
 			NULL_CHECK(wordCase[d]);
 			NULL_CHECK(wordCtrl[d]);
 			// convert to byte address
-			byteCase[d] = (uint8*)wordCase[d];
-			byteCtrl[d] = (uint8*)wordCtrl[d];
+			byteCase[d] = (uint8 *)wordCase[d];
+			byteCtrl[d] = (uint8 *)wordCtrl[d];
 
 			// shoft and copy
 			for (uint32 i = 0; i < (numVariables * numWordCase); i++)
@@ -1633,23 +1603,23 @@ public:
 
 	word *GetVarCase(uint32 o, varIdx vi)
 	{
-		return &wordCase[o][vi*numWordCase];
+		return &wordCase[o][vi * numWordCase];
 	}
 
 	word *GetVarCtrl(uint32 o, varIdx vi)
 	{
-		return &wordCtrl[o][vi*numWordCtrl];
+		return &wordCtrl[o][vi * numWordCtrl];
 	}
 };
 
 struct COMBIN
 {
 	varIdx idx[MAX_ORDER]; // SNP indexes
-	double power;	// alpha or beta test value
+	double power;		   // alpha or beta test value
 	void Print(FILE *f, char **n, uint32 o)
 	{
 		fprintf(f, "%f", power);
-		for(uint32 i=0; i<o; i++)
+		for (uint32 i = 0; i < o; i++)
 			fprintf(f, ",%s", n[idx[i]]);
 		fprintf(f, "\n");
 	}
@@ -1679,11 +1649,11 @@ public:
 	uint32 numBuf; // buffer size to reduce insetion in sorted array.
 	uint32 bufIdx; // number of item in the buffer;
 
-	uint32 numAll; // numKeep + numBuf
-	double minKeep;	// minumum power in numKeep element
+	uint32 numAll;	// numKeep + numBuf
+	double minKeep; // minumum power in numKeep element
 
 	bool mergedOnce;
-	
+
 	STORAGE(uint32 t, double br)
 	{
 		numTop = t;
@@ -1691,18 +1661,18 @@ public:
 			numKeep = MIN_TOP;
 		else
 			numKeep = numTop;
-			
+
 		bufRatio = br;
-		numBuf = (uint32)(numKeep*bufRatio);
+		numBuf = (uint32)(numKeep * bufRatio);
 		numAll = numKeep + numBuf;
 
 		minKeep = 0;
 		bufIdx = 0;
-		
-		keep = new COMBIN[numKeep+numBuf];
+
+		keep = new COMBIN[numKeep + numBuf];
 		NULL_CHECK(keep);
 		memset(keep, 0, sizeof(COMBIN) * numAll);
-		
+
 		buf = &keep[numKeep];
 
 		mergedOnce = false;
@@ -1745,21 +1715,21 @@ public:
 
 struct ThreadData
 {
-	void *epiStat; // epi class
+	void *epiStat;	 // epi class
 	uint32 threadId; // thread id
-	uint32 jobId; // job Id to be executed on that threads
+	uint32 jobId;	 // job Id to be executed on that threads
 };
 
 class EpiStat
 {
 public:
-	Dataset * dataset;
+	Dataset *dataset;
 
 	ARGS args;
 	uint32 threadIdx;
 	uint32 jobIdx;
 
-	void *(*threadFunction[4]) (void *);
+	void *(*threadFunction[4])(void *);
 
 	FILE **topBetaFile;
 	FILE **topAlphaFile;
@@ -1776,13 +1746,13 @@ public:
 
 	void OpenFiles(uint32 order)
 	{
-		topBetaFile = new FILE*[args.jobsToDo];
+		topBetaFile = new FILE *[args.jobsToDo];
 		NULL_CHECK(topBetaFile);
 
-		topAlphaFile = new FILE*[args.jobsToDo];
+		topAlphaFile = new FILE *[args.jobsToDo];
 		NULL_CHECK(topAlphaFile);
 
-		char* fn = new char[strlen(args.output) + 20];
+		char *fn = new char[strlen(args.output) + 20];
 		NULL_CHECK(fn);
 		for (uint32 j = 0; j < args.jobsToDo; j++)
 		{
@@ -1802,7 +1772,7 @@ public:
 				NULL_CHECK(topAlphaFile)
 			}
 		}
-		delete[]fn;
+		delete[] fn;
 	}
 
 	void CloseFiles(uint32 order)
@@ -1827,7 +1797,6 @@ public:
 
 	~EpiStat()
 	{
-
 	}
 
 	EpiStat(EpiStat *ref)
@@ -1835,7 +1804,7 @@ public:
 		memcpy(this, ref, sizeof(EpiStat));
 	}
 
-	void Init(Dataset *d, ARGS a, void *(*tf1) (void *), void *(*tf2) (void *), void *(*tf3) (void *), void *(*tf4) (void *))
+	void Init(Dataset *d, ARGS a, void *(*tf1)(void *), void *(*tf2)(void *), void *(*tf3)(void *), void *(*tf4)(void *))
 	{
 		dataset = d;
 		args = a;
@@ -1895,34 +1864,35 @@ public:
 		}
 	}
 
-	void countVariantCombinations(sampleIdx * contingencyTable, uint64_t variantsIn8Samples)
+	void countVariantCombinations(sampleIdx *contingencyTable, uint64_t variantsIn8Samples)
 	{
 		//each of the 8 bytes contains the variants of a single sample
-		for(int byte = 0; byte < 8; byte++)
+		for (int byte = 0; byte < 8; byte++)
 		{
-	        	//increment count of given byte representing a variant combination
-	        	contingencyTable[(variantsIn8Samples>>(byte*8))&0xFF]++;
+			//increment count of given byte representing a variant combination
+			contingencyTable[(variantsIn8Samples >> (byte * 8)) & 0xFF]++;
 		}
 	}
-	
-	template <uint32_t N,bool CountCombinations = false>
+
+	template <uint32_t N, bool CountCombinations = false>
 	void OR(varIdx idx)
 	{
-		const uint32 OIDX = N-1; // SNPs
+		const uint32 OIDX = N - 1; // SNPs
 		word *caseData = dataset->GetVarCase(OIDX, idx);
 		word *ctrlData = dataset->GetVarCtrl(OIDX, idx);
-		
+
 		for (uint32 i = 0; i < dataset->numWordCase; i++)
 		{
 			word variants = caseData[i];
-			
-			if(N>1)
+
+			if (N > 1)
 				variants |= epiCaseWord[OIDX - 1][i];
-		
-			if(CountCombinations)
+
+			if (CountCombinations)
 			{
 				countVariantCombinations(contingencyCase, variants);
-			}else
+			}
+			else
 			{
 				epiCaseWord[OIDX][i] = variants;
 			}
@@ -1931,24 +1901,24 @@ public:
 		for (uint32 i = 0; i < dataset->numWordCtrl; i++)
 		{
 			word variants = ctrlData[i];
-			
-			if(N>1)
+
+			if (N > 1)
 				variants |= epiCtrlWord[OIDX - 1][i];
-			
-			
-			if(CountCombinations)
+
+			if (CountCombinations)
 			{
 				countVariantCombinations(contingencyCtrl, variants);
-			}else
+			}
+			else
 			{
 				epiCtrlWord[OIDX][i] = variants;
 			}
 		}
 	}
-	template<uint32_t N>
+	template <uint32_t N>
 	void resetContigencyTable()
 	{
-		size_t arraySize = (1 << (2*N)) * sizeof(sampleIdx);
+		size_t arraySize = (1 << (2 * N)) * sizeof(sampleIdx);
 		memset(contingencyCtrl, 0, arraySize);
 		memset(contingencyCase, 0, arraySize);
 	}
@@ -1968,7 +1938,7 @@ public:
 			if (sum)
 				beta += (P2(nCase) + P2(nCtrl)) / sum;
 		}
-		return beta/dataset->numSamples;
+		return beta / dataset->numSamples;
 	}
 
 	void Epi_1(ThreadData *td)
@@ -1986,23 +1956,11 @@ public:
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
 		{
 			cnt++;
-#ifdef PTEST
-			clock_t xc1 = clock();
-#endif
 			resetContigencyTable<1>();
-#ifdef PTEST
-			clock_t xc2 = clock();
-#endif
-			OR<1,true>(idx[0]);
-#ifdef PTEST
-			clock_t xc3 = clock();
-#endif
+			OR<1, true>(idx[0]);
 			// compute beta
 			double b = Gini<1>();
 			c.power = b;
-#ifdef PTEST
-			clock_t xc4 = clock();
-#endif
 			// report SNP combination if beta meet threshold
 			if (args.printBeta[OIDX])
 				if (args.topNbeta[OIDX])
@@ -2037,13 +1995,6 @@ public:
 				if (args.best)
 					dataset->results[threadIdx].Max_1(a, b, idx);
 			}
-#ifdef PTEST
-			clock_t xc5 = clock();
-			elapse[1] += xc2 - xc1;
-			elapse[2] += xc3 - xc2;
-			elapse[3] += xc4 - xc3;
-			elapse[4] += xc5 - xc4;
-#endif
 		}
 		args.jobs[jobIdx].counted = cnt;
 		if (args.topNalpha[OIDX])
@@ -2075,23 +2026,11 @@ public:
 			for (idx[1] = idx[0] + 1; idx[1] < (dataset->numVariables - (OIDX - 1)); idx[1]++)
 			{
 				cnt++;
-#ifdef PTEST
-				clock_t xc1 = clock();
-#endif
 				resetContigencyTable<2>();
-#ifdef PTEST
-				clock_t xc2 = clock();
-#endif
-				OR<2,true>(idx[1]);
-#ifdef PTEST
-				clock_t xc3 = clock();
-#endif
+				OR<2, true>(idx[1]);
 				// compute beta
 				double b = Gini<2>();
 				c.power = b;
-#ifdef PTEST
-				clock_t xc4 = clock();
-#endif
 				// report SNP combination if beta meet threshold
 				if (args.printBeta[OIDX])
 					if (args.topNbeta[OIDX])
@@ -2126,13 +2065,6 @@ public:
 					if (args.best)
 						dataset->results[threadIdx].Max_2(a, b, idx);
 				}
-#ifdef PTEST
-				clock_t xc5 = clock();
-				elapse[1] += xc2 - xc1;
-				elapse[2] += xc3 - xc2;
-				elapse[3] += xc4 - xc3;
-				elapse[4] += xc5 - xc4;
-#endif
 			}
 		}
 		args.jobs[jobIdx].counted = cnt;
@@ -2170,7 +2102,7 @@ public:
 				e = args.jobs[jobIdx].e[1];
 			else
 				e = (dataset->numVariables - (OIDX - 1)) - 1;
-			
+
 			OR<1>(idx[0]);
 			for (idx[1] = s; idx[1] <= e; idx[1]++)
 			{
@@ -2178,23 +2110,11 @@ public:
 				for (idx[2] = idx[1] + 1; idx[2] < dataset->numVariables; idx[2]++)
 				{
 					cnt++;
-#ifdef PTEST
-					clock_t xc1 = clock();
-#endif
 					resetContigencyTable<3>();
-#ifdef PTEST
-					clock_t xc2 = clock();
-#endif
-					OR<3,true>(idx[2]);
-#ifdef PTEST
-					clock_t xc3 = clock();
-#endif
+					OR<3, true>(idx[2]);
 					// compute beta
 					double b = Gini<3>();
 					c.power = b;
-#ifdef PTEST
-					clock_t xc4 = clock();
-#endif
 					// report SNP combination if beta meet threshold
 					if (args.printBeta[OIDX])
 						if (args.topNbeta[OIDX])
@@ -2230,13 +2150,6 @@ public:
 						if (args.best)
 							dataset->results[threadIdx].Max_3(a, b, idx);
 					}
-#ifdef PTEST
-					clock_t xc5 = clock();
-					elapse[1] += xc2 - xc1;
-					elapse[2] += xc3 - xc2;
-					elapse[3] += xc4 - xc3;
-					elapse[4] += xc5 - xc4;
-#endif
 				}
 			}
 		}
@@ -2265,7 +2178,7 @@ public:
 
 		uint64 cnt = 0;
 		for (idx[0] = args.jobs[jobIdx].s[0]; idx[0] <= args.jobs[jobIdx].e[0]; idx[0]++)
-		{	
+		{
 			varIdx s, e;
 			if (idx[0] == args.jobs[jobIdx].s[0])
 				s = args.jobs[jobIdx].s[1];
@@ -2277,7 +2190,7 @@ public:
 				e = (dataset->numVariables - (OIDX - 1)) - 1;
 
 			OR<1>(idx[0]);
-			for (idx[1] = s; idx[1] <= e; idx[1]++) 
+			for (idx[1] = s; idx[1] <= e; idx[1]++)
 			{
 				OR<2>(idx[1]);
 				for (idx[2] = idx[1] + 1; idx[2] < (dataset->numVariables - (OIDX - 2)); idx[2]++)
@@ -2286,23 +2199,11 @@ public:
 					for (idx[3] = idx[2] + 1; idx[3] < dataset->numVariables; idx[3]++)
 					{
 						cnt++;
-#ifdef PTEST
-						clock_t xc1 = clock();
-#endif
 						resetContigencyTable<4>();
-#ifdef PTEST
-						clock_t xc2 = clock();
-#endif
-						OR<4,true>(idx[3]);
-#ifdef PTEST
-						clock_t xc3 = clock();
-#endif
+						OR<4, true>(idx[3]);
 						// compute beta
 						double b = Gini<4>();
 						c.power = b;
-#ifdef PTEST
-						clock_t xc4 = clock();
-#endif
 
 						// report SNP combination if beta meet threshold
 						if (args.printBeta[OIDX])
@@ -2311,7 +2212,7 @@ public:
 								topBeta->Add(c);
 							}
 							else if (c.power >= args.beta[OIDX])
-								c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX+1);
+								c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 						// compute Information Gained
 						if (args.computeAlpha[OIDX])
@@ -2336,22 +2237,14 @@ public:
 							if (args.best)
 								dataset->results[threadIdx].Max_4(a, b, idx);
 						}
-#ifdef PTEST
-						clock_t xc5 = clock();
-						elapse[1] += xc2 - xc1;
-						elapse[2] += xc3 - xc2;
-						elapse[3] += xc4 - xc3;
-						elapse[4] += xc5 - xc4;
-#endif
 					}
 				}
-
 			}
 		}
 		args.jobs[jobIdx].counted = cnt;
 		if (args.topNalpha[OIDX])
 		{
-			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX+1);
+			topAlpha->Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 		}
 		if (args.topNbeta[OIDX])
 		{
@@ -2364,28 +2257,28 @@ public:
 	{
 		ThreadData *td = new ThreadData[numThread];
 		NULL_CHECK(td);
-		
+
 		pthread_t *threads = new pthread_t[numThread];
 		NULL_CHECK(threads);
 
 		for (uint32 i = 0; i < numThread; i++)
 		{
-			td[i].epiStat = (void *) new EpiStat(this);
+			td[i].epiStat = (void *)new EpiStat(this);
 			td[i].threadId = i;
 			td[i].jobId = i + firstJobIdx;
 		}
 		for (uint32 i = 0; i < numThread; i++)
 		{
-				pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
+			pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
 		}
 		for (uint32 i = 0; i < numThread; i++)
 		{
-				pthread_join(threads[i], NULL);
-				if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
-				{
-					printf("\n >>> counted: %llu expected %15.0f", args.jobs[td[i].jobId].counted, args.jobs[td[i].jobId].comb);
-					ERROR("Problem in parallelisation please report on GitHub issue page");
-				}
+			pthread_join(threads[i], NULL);
+			if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
+			{
+				printf("\n >>> counted: %llu expected %15.0f", args.jobs[td[i].jobId].counted, args.jobs[td[i].jobId].comb);
+				ERROR("Problem in parallelisation please report on GitHub issue page");
+			}
 		}
 
 		delete[] threads;
@@ -2400,13 +2293,13 @@ public:
 		{
 			if (args.computeBeta[o])
 			{
-				
+
 				printf("\n >>>>>> %u-SNP exhaustive search", o + 1);
 				printf("\n");
 				printf("\n Processing %u jobs [%u..%u] in parallel", args.jobsToDo, args.firstJobIdx, args.lastJobIdx);
-				
+
 				auto begin = std::chrono::high_resolution_clock::now();
-				
+
 				OpenFiles(o);
 				args.WorkloadDivider(o + 1, dataset->numVariables, args.numJobs);
 				MultiThread(o, args.jobsToDo, args.firstJobIdx);
@@ -2422,7 +2315,7 @@ public:
 				{
 					c += args.jobs[i + args.firstJobIdx].comb;
 				}
-				printf("\n All jobs are compeleted in %10.3f seconds (%10.0f tests per second)", time_spent, c/time_spent);
+				printf("\n All jobs are compeleted in %10.3f seconds (%10.0f tests per second)", time_spent, c / time_spent);
 				printf("\n");
 			}
 		}
@@ -2431,17 +2324,25 @@ public:
 
 #ifndef _MSC_VER
 		{
-			char* cmd = new char[1024];
+			char *cmd = new char[1024];
 			NULL_CHECK(cmd);
 			for (uint32 order = 0; order < MAX_ORDER; order++)
 			{
 				char header[1024];
 				switch (order)
 				{
-				case 0:	sprintf(header, "SNP_A"); break;
-				case 1:	sprintf(header, "SNP_A,SNP_B"); break;
-				case 2:	sprintf(header, "SNP_A,SNP_B,SNP_C"); break;
-				case 3:	sprintf(header, "SNP_A,SNP_B,SNP_C,SNP_D"); break;
+				case 0:
+					sprintf(header, "SNP_A");
+					break;
+				case 1:
+					sprintf(header, "SNP_A,SNP_B");
+					break;
+				case 2:
+					sprintf(header, "SNP_A,SNP_B,SNP_C");
+					break;
+				case 3:
+					sprintf(header, "SNP_A,SNP_B,SNP_C,SNP_D");
+					break;
 				}
 
 				char sortCmd[100];
@@ -2458,13 +2359,13 @@ public:
 					printf("\n Merge Beta%u files...", order + 1);
 					// create a merged output file
 					sprintf(cmd, "cat %s.Beta.%u.*.csv %s | awk 'BEGIN{print(\"Beta,%s\")}{print}' > %s.Beta.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
-					
+
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot merge output files");
-					
+
 					sprintf(cmd, "rm %s.Beta.%u.*.csv", args.output, order + 1);
-					
+
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot delete temp files");
@@ -2473,21 +2374,21 @@ public:
 				{
 					printf("\n Merge Alpha%u files...", order + 1);
 					// create a merged output file
-					
+
 					sprintf(cmd, "cat %s.Alpha.%u.*.csv %s | awk 'BEGIN{print(\"Alpha,%s\")}{print}' > %s.Alpha.%u.csv", args.output, order + 1, sortCmd, header, args.output, order + 1);
-					
+
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot merge output files");
-					
+
 					sprintf(cmd, "rm %s.Alpha.%u.*.csv", args.output, order + 1);
-					
+
 					printf("\n >>> %s", cmd);
 					if (system(cmd) == -1)
 						ERROR("Cannot delete temp files");
 				}
 			}
-			delete[]cmd;
+			delete[] cmd;
 		}
 #endif
 		if (args.best)
@@ -2495,13 +2396,13 @@ public:
 			for (uint32 i = 1; i < args.numThreads; i++)
 				dataset->results[0].Max(dataset->results[i]);
 
-			char* fn = new char[strlen(args.output) + 20];
+			char *fn = new char[strlen(args.output) + 20];
 			NULL_CHECK(fn);
-			
+
 			sprintf(fn, "%s.best.csv", args.output);
-			
+
 			dataset->results->toCSV(fn, dataset->nameVariable);
-			delete[]fn;
+			delete[] fn;
 		}
 
 		FreeBeta(dataset->numVariables, &args);
@@ -2541,7 +2442,7 @@ public:
 			printf("\n");
 		}
 
-		if(args.clusterAlpha)
+		if (args.clusterAlpha)
 			printf("\n >>>>> Compute alpha on the cluster.");
 		else
 			printf("\n >>>>> Compute beta on the cluster.");
@@ -2594,7 +2495,7 @@ void *EpiThread_1(void *t)
 	if (time_spent == 0)
 		time_spent = 1;
 	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
-	printf("\n"); 
+	printf("\n");
 	return NULL;
 }
 
@@ -2615,7 +2516,7 @@ void *EpiThread_2(void *t)
 	if (time_spent == 0)
 		time_spent = 1;
 	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
-	printf("\n"); 
+	printf("\n");
 	return NULL;
 }
 
@@ -2636,7 +2537,7 @@ void *EpiThread_3(void *t)
 	if (time_spent == 0)
 		time_spent = 1;
 	printf("\n Thread %5u processed Job %5u in %10.3f seconds (%10.0f tests per second)", td->threadId + 1, td->jobId + 1, time_spent, epiStat->args.jobs[td->jobId].comb / time_spent);
-	printf("\n"); 
+	printf("\n");
 	return NULL;
 }
 
@@ -2702,7 +2603,7 @@ void MasterProgram(ARGS args)
 	char res[1024];
 
 	printf("\n Parse the config file");
-	
+
 	// read number of lines in config
 	sprintf(cmd, "wc -l %s", args.configFileName);
 	RunCmd(cmd, res);
@@ -2733,7 +2634,7 @@ void MasterProgram(ARGS args)
 	printf("\n     #  Threads  Memory(GB)  user@address");
 	for (uint32 i = 0; i < numComputeNode; i++)
 	{
-		printf("\n %5u%9u%12u  %s", i+1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].userAdr);
+		printf("\n %5u%9u%12u  %s", i + 1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].userAdr);
 	}
 	printf("\n");
 
@@ -2754,7 +2655,7 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].memory < memGb)
 		{
-			printf("\n %5u%9u%12u  %s", i+1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].userAdr);
+			printf("\n %5u%9u%12u  %s", i + 1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].userAdr);
 			computeNodes[i].threads = 0;
 		}
 	}
@@ -2773,7 +2674,7 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].memory >= memGb)
 		{
-			printf("\n %5u%9u%12u%8u%6u  %s", i+1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].start, computeNodes[i].end, computeNodes[i].userAdr);
+			printf("\n %5u%9u%12u%8u%6u  %s", i + 1, computeNodes[i].threads, computeNodes[i].memory, computeNodes[i].start, computeNodes[i].end, computeNodes[i].userAdr);
 		}
 	}
 
@@ -2781,7 +2682,7 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].threads > 0)
 		{
-			printf("\n [%5u] Create temporary directory", i+1);
+			printf("\n [%5u] Create temporary directory", i + 1);
 			sprintf(cmd, "%s %s %s", args.sshCmd, computeNodes[i].userAdr, "mktemp -d -t ci-$(date +%Y-%m-%d-%H-%M-%S)-XXXXXXXXXX");
 			//printf("\n cmd >>> %s\n", cmd);
 			RunCmd(cmd, res);
@@ -2789,7 +2690,7 @@ void MasterProgram(ARGS args)
 			{
 				ERROR("Fail to read temp directory created on the server");
 			}
-			printf("\n [%5u] temporary directory path: %s:%s", i+1, computeNodes[i].userAdr, computeNodes[i].dir);
+			printf("\n [%5u] temporary directory path: %s:%s", i + 1, computeNodes[i].userAdr, computeNodes[i].dir);
 		}
 	}
 
@@ -2797,11 +2698,11 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].threads > 0)
 		{
-			printf("\n [%5u] Copy input file", i+1);
+			printf("\n [%5u] Copy input file", i + 1);
 			sprintf(cmd, "%s %s %s:%s/", args.scpCmd, args.input, computeNodes[i].userAdr, computeNodes[i].dir);
 			//printf("\n cmd >>> %s\n", cmd);
 			RunCmd(cmd, res);
-			printf("\n [%5u] Check if the file is copied", i+1);
+			printf("\n [%5u] Check if the file is copied", i + 1);
 			sprintf(cmd, "%s %s ls %s/", args.sshCmd, computeNodes[i].userAdr, computeNodes[i].dir);
 			//printf("\n cmd >>> %s\n", cmd);
 			RunCmd(cmd, res);
@@ -2811,7 +2712,7 @@ void MasterProgram(ARGS args)
 				ERROR("Fail to read input file name that is copied.");
 			}
 			if (!strcmp(fn, args.input))
-				printf("\n [%5u] successful.", i+1);
+				printf("\n [%5u] successful.", i + 1);
 			else
 				ERROR("Fail to copy input file.");
 		}
@@ -2821,7 +2722,7 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].threads > 0)
 		{
-			printf("\n [%5u] Generate and copy script file", i+1);
+			printf("\n [%5u] Generate and copy script file", i + 1);
 			sprintf(computeNodes[i].script, "%s_Script_%u.sh", args.output, i);
 			FILE *runme = fopen(computeNodes[i].script, "w");
 			fprintf(runme, "%s\n", "#!/bin/bash");
@@ -2831,14 +2732,14 @@ void MasterProgram(ARGS args)
 			fprintf(runme, "%s\n", "cd BitEpi");
 			fprintf(runme, "%s\n", "g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread -DV2 &> c.log");
 			fprintf(runme, "%s\n", "chmod 777 BitEpi.o");
-			fprintf(runme, "./BitEpi.o -i ../%s -o %s -c -j %u -f %u -t %u %s > %s.%u.log\n", args.input, args.output, totalThreads, computeNodes[i].start+1, computeNodes[i].threads, args.clusterCmd, args.output, i);
-			fprintf(runme, "%s\n", "echo \"Done\" > Done"); 
+			fprintf(runme, "./BitEpi.o -i ../%s -o %s -c -j %u -f %u -t %u %s > %s.%u.log\n", args.input, args.output, totalThreads, computeNodes[i].start + 1, computeNodes[i].threads, args.clusterCmd, args.output, i);
+			fprintf(runme, "%s\n", "echo \"Done\" > Done");
 			fclose(runme);
 
 			sprintf(cmd, "%s %s %s:%s/", args.scpCmd, computeNodes[i].script, computeNodes[i].userAdr, computeNodes[i].dir);
 			//printf("\n cmd >>> %s\n", cmd);
 			RunCmd(cmd, res);
-			
+
 			///////////////////////// we should check if the script file is copied correctly
 		}
 	}
@@ -2847,7 +2748,7 @@ void MasterProgram(ARGS args)
 	{
 		if (computeNodes[i].threads > 0)
 		{
-			printf("\n [%5u] Run the script", i+1);
+			printf("\n [%5u] Run the script", i + 1);
 			computeNodes[i].done = false;
 			sprintf(cmd, "%s %s bash %s/%s &", args.sshCmd, computeNodes[i].userAdr, computeNodes[i].dir, computeNodes[i].script);
 			//printf("\n cmd >>> %s\n", cmd);
@@ -2858,7 +2759,6 @@ void MasterProgram(ARGS args)
 
 	printf("\n Wait for 20 seconds\n");
 	sleep(20);
-	
 
 	printf("\n Check if all compute nodes are done");
 	while (true)
@@ -2872,7 +2772,7 @@ void MasterProgram(ARGS args)
 				RunCmd(cmd, res);
 				if (!strcmp("Done", res))
 				{
-					printf("\n [%5u] compeleted the task\n", i+1);
+					printf("\n [%5u] compeleted the task\n", i + 1);
 					computeNodes[i].done = true;
 				}
 			}
@@ -2894,7 +2794,6 @@ void MasterProgram(ARGS args)
 		printf("\n Wait 10 second and check again\n");
 		sleep(5);
 	}
-
 
 	printf("\n\n Copy results from compute nodes back to master and remove temp directory on servers \n");
 	for (uint32 i = 0; i < numComputeNode; i++)
@@ -2930,11 +2829,6 @@ void MasterProgram(ARGS args)
 
 int main(int argc, char *argv[])
 {
-#ifdef PTEST
-	for (uint32 i = 0; i < 100; i++)
-		elapse[i] = 0;
-	clock_t xc1 = clock();
-#endif
 	printf("\n=============Start=============\n\n\n");
 	ARGS args;
 	args.Parse(argc, argv);
@@ -2945,13 +2839,13 @@ int main(int argc, char *argv[])
 	if (args.master)
 	{
 		MasterProgram(args);
-		return 0; 
+		return 0;
 	}
 #endif
 #endif
 
 	Dataset dataset;
-	if(args.readBfile)
+	if (args.readBfile)
 		dataset.ReadDatasetBfile(args.input);
 	else
 		dataset.ReadDatasetCSV(args.input);
@@ -2964,26 +2858,6 @@ int main(int argc, char *argv[])
 		epiStat.RunCluster();
 	else
 		epiStat.Run();
-
-#ifdef PTEST
-	printf("\n============= per-Operation Performance (for Performance testing)");
-	clock_t xc2 = clock();
-	elapse[0] = xc2 - xc1;
-	clock_t other = elapse[0];
-	for (uint32 i = 1; i < 100; i++)
-	{
-		elapse[i] /= args.numThreads;
-		other -= elapse[i];
-	}
-
-	printf("\n Total: %15u", elapse[0]);
-	printf("\n Clear: %15u \t %5.2f %%", elapse[1], ((double)elapse[1] * 100) / elapse[0]);
-	printf("\n Count: %15u \t %5.2f %%", elapse[2], ((double)elapse[2] * 100) / elapse[0]);
-	printf("\n Gini : %15u \t %5.2f %%", elapse[3], ((double)elapse[3] * 100) / elapse[0]);
-	printf("\n Rest : %15u \t %5.2f %%", elapse[4], ((double)elapse[4] * 100) / elapse[0]);
-	printf("\n Other: %15u \t %5.2f %%", other, ((double)other * 100) / elapse[0]);
-	printf("\n\n");
-#endif
 
 	printf("\n=============Finish=============\n\n\n");
 	return 0;
