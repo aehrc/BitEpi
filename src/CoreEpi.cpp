@@ -70,15 +70,6 @@ public:
         }
     }
 
-    EpiStat()
-    {
-        return;
-    }
-
-    ~EpiStat()
-    {
-    }
-
     EpiStat(EpiStat *ref)
     {
         memcpy(this, ref, sizeof(EpiStat));
