@@ -1,4 +1,5 @@
 #include "def.h"
+#define MIN_TOP 1000
 
 // A combination of variables and its score
 struct Combination
@@ -30,7 +31,7 @@ int CompareCombination(const void *a, const void *b)
 }
 
 // This storage is used to keep top combinations
-class STORAGE
+class TopHitStorage
 {
 public:
     uint32 numTop;     // Number of top items to be reported
@@ -43,7 +44,7 @@ public:
     uint32 bufIdx;     // number of item in the list;
     double minKeep;    // minumum power in numKeep element
 
-    STORAGE(uint32 t, double br)
+    TopHitStorage(uint32 t, double br)
     {
         numTop = t;
         numKeep = (numTop > MIN_TOP) ? numTop : MIN_TOP;
@@ -58,7 +59,7 @@ public:
         buf = &keep[numKeep];
     }
 
-    ~STORAGE()
+    ~TopHitStorage()
     {
         delete[] keep;
     }

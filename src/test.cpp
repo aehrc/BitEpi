@@ -1,11 +1,16 @@
 #include "def.h"
 #include "Arguments.h"
+#include "TopHitStorage.h"
 
-int main1(int argc, char *argv[])
+#ifdef TEST
+int main(int argc, char *argv[])
 {
-    printf("\n=============Start=============");
-    printf("\n===============================\n");
+    printf("\n=============Start Test=============");
+    printf("\n====================================\n");
 
     Arguments args;
     args.PrintHelp();
+    args.Parse(argc, argv);
+    args.Print();
 }
+#endif

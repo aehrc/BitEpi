@@ -157,6 +157,7 @@ void *EpiThread_4(void *t)
 	return NULL;
 }
 
+#ifndef TEST
 int main1(int argc, char *argv[])
 {
 	printf("\n=============Start=============");
@@ -179,3 +180,4 @@ int main1(int argc, char *argv[])
 	printf("\n=============Finish=============\n\n\n");
 	return 0;
 }
+#endif

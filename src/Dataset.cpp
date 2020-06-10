@@ -1,38 +1,32 @@
 #include "def.h"
+//#include "Arguments.h"
 
 class Dataset
 {
-    // contigency table index translation
-    // note that 3 or 0b11 is not a valid genotype and should not be considered in Gini Computation.
     uint64 CaseIndex(varIdx v, sampleIdx s) { return ((v * numByteCase) + s); } // get the byte index of sample in data
     uint64 CtrlIndex(varIdx v, sampleIdx s) { return ((v * numByteCtrl) + s); } // get the byte index of sample in data
 
 public:
-    uint32 order;
+    // uint32 order;
 
-    bool *labels;
-
-    sampleIdx numSamples;
+    sampleIdx numSamples; // number of samples in Dataset
+    varIdx numVariables;  // Number of Variables in Dataset
+    char **nameVariable;  // name of variables (variable id)
+    bool *labels;         // class of samples (Case/Control)
 
     sampleIdx numCase;
     sampleIdx numCtrl;
-
     uint32 numWordCase; // number of machine word used to store Case data (each sample is a byte)
     uint32 numWordCtrl; // number of machine word used to store Ctrl data (each sample is a byte)
-
     uint32 numByteCase; // numWordCase * sizeof(word)
     uint32 numByteCtrl; // numWordCtrl * sizeof(word)
 
     uint8 *byteCase[MAX_ORDER]; // byte pointer to store genotype data and their shifted version
     uint8 *byteCtrl[MAX_ORDER]; // byte pointer to store genotype data and their shifted version
+    word *wordCase[MAX_ORDER];  // the wrod pointer to byteCase
+    word *wordCtrl[MAX_ORDER];  // the wrod pointer to byteCtrl
 
-    word *wordCase[MAX_ORDER]; // the wrod pointer to byteCase
-    word *wordCtrl[MAX_ORDER]; // the wrod pointer to byteCtrl
-
-    varIdx numVariables;
-    char **nameVariable;
-
-    double setBeta; // beta of the original set
+    double setBeta; // beta of the set of all samples (beta_0)
 
     sampleIdx *contingency_table; // should be small enough to remain in cache
 
@@ -44,13 +38,39 @@ public:
             delete[] nameVariable[i];
         delete nameVariable;
 
-        for (uint32 i = 0; i < order; i++)
+        for (uint32 i = 0; i < MAX_ORDER; i++)
         {
             delete[] wordCase[i];
             delete[] wordCtrl[i];
         }
     }
 
+    // Count number of line in a file to see how many variable exits.
+    uint32 LineCount(const char *fn)
+    {
+        printf("\n Counting lines in %s", fn);
+
+        FILE *f;
+        uint32 lines = 0;
+
+        f = fopen(fn, "r");
+        NULL_CHECK(f)
+
+        char ch;
+        for (ch = getc(f); ch != EOF; ch = getc(f))
+            if (ch == '\n')
+                lines = lines + 1;
+
+        fclose(f);
+
+        return lines;
+    }
+    /**
+	*sampleClasses contains the class for each sample, false for control, true for case.
+	*snpLabels contains the string representing each snp label
+	*genoytypes contains a vector for each snp which contains the genotype each sample has for that snp.
+	*	0 is homozygous for reference, 1 is heterozygous, and 2 is homozygous for the variant
+	*/
     void prepareDataset(std::vector<bool> &sampleClasses, std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
     {
         numSamples = sampleClasses.size();
@@ -210,6 +230,115 @@ public:
         return;
     }
 
+    // This function read data from file
+    void ReadDatasetCSV(const char *fn)
+    {
+        printf("\n loading dataset %s", fn);
+
+        std::vector<bool> sampleClasses;
+        std::vector<std::string> snpLabels;
+        std::vector<std::vector<uint8_t>> genotypes;
+
+        CsvParser *csvparser = CsvParser_new(fn, ",", 1);
+        CsvRow *row;
+
+        const CsvRow *header = CsvParser_getHeader(csvparser);
+        NULL_CHECK(header);
+
+        const char **headerFields = CsvParser_getFields(header);
+
+        uint sampleColumns = CsvParser_getNumFields(header) - 1;
+
+        for (sampleIdx i = 0; i < sampleColumns; i++)
+        {
+            uint8_t label;
+            uint32 read = sscanf(headerFields[i + 1], "%2u", &label);
+            if (read != 1 || label > 1)
+            {
+                printf("\n Given class label for %uth sample is %s", i + 1, headerFields[i + 1]);
+                ERROR("Class lable shold be 0 or 1 for controls and cases");
+            }
+            sampleClasses.push_back(label == 1);
+        }
+
+        uint variable = 0;
+        while ((row = CsvParser_getRow(csvparser)))
+        {
+            const char **rowFields = CsvParser_getFields(row);
+
+            if (CsvParser_getNumFields(row) != (sampleColumns + 1))
+            {
+                printf("\n For %uth SNP there are %u genotypes but there are %u samples in the first line", variable + 1, CsvParser_getNumFields(row) - 1, sampleColumns);
+                ERROR("Number of genotypes does not match the number of samples in the first line");
+            }
+            snpLabels.push_back(std::string(rowFields[0]));
+            genotypes.push_back(std::vector<uint8_t>());
+            genotypes[variable].reserve(sampleColumns);
+
+            for (sampleIdx i = 0; i < sampleColumns; i++)
+            {
+                uint8_t gt;
+                uint32 read = sscanf(rowFields[i + 1], "%2u", &gt);
+                if (read != 1 || gt > 2)
+                {
+                    printf("\n Given genotype for %uth SNP and %uth Sample is %s", variable + 1, i + 1, rowFields[i + 1]);
+                    ERROR("Genotype shold be 0 or 1 or 2");
+                }
+                genotypes[variable].push_back(gt);
+            }
+            CsvParser_destroy_row(row);
+
+            variable++;
+        }
+
+        CsvParser_destroy(csvparser);
+
+        prepareDataset(sampleClasses, snpLabels, genotypes);
+        return;
+    }
+
+    // This function write data from file (to test ReadDataset function)
+    void WriteDataset(const char *fn)
+    {
+        printf("\n Write dataset to %s", fn);
+
+        FILE *f = fopen(fn, "w");
+        NULL_CHECK(f);
+
+        fprintf(f, "Var\\Class");
+
+        for (uint32 i = 0; i < numSamples; i++)
+        {
+            fprintf(f, ",%u", labels[i] ? 1 : 0);
+        }
+        fprintf(f, "\n");
+
+        for (uint32 j = 0; j < numVariables; j++)
+        {
+            fprintf(f, "%s", nameVariable[j]);
+
+            uint32 idxCase = 0;
+            uint32 idxCtrl = 0;
+
+            for (uint32 i = 0; i < numSamples; i++)
+            {
+                if (labels[i])
+                {
+                    fprintf(f, ",%u", byteCase[0][CaseIndex(j, idxCase)]);
+                    idxCase++;
+                }
+                else
+                {
+                    fprintf(f, ",%u", byteCtrl[0][CtrlIndex(j, idxCtrl)]);
+                    idxCtrl++;
+                }
+            }
+            fprintf(f, "\n");
+        }
+        fclose(f);
+        return;
+    }
+
     void ComputeSetBeta()
     {
         numCase = 0;
@@ -225,7 +354,7 @@ public:
 
     void Shift()
     {
-        for (uint32 d = 1; d < order; d++)
+        for (uint32 d = 1; d < MAX_ORDER; d++)
         {
             // allocate memory
             wordCase[d] = new word[numVariables * numWordCase];
@@ -236,7 +365,7 @@ public:
             byteCase[d] = (uint8 *)wordCase[d];
             byteCtrl[d] = (uint8 *)wordCtrl[d];
 
-            // shoft and copy
+            // shift and copy
             for (uint32 i = 0; i < (numVariables * numWordCase); i++)
                 wordCase[d][i] = wordCase[d - 1][i] << 2;
             for (uint32 i = 0; i < (numVariables * numWordCtrl); i++)
@@ -246,9 +375,8 @@ public:
         }
     }
 
-    void Init(ARGS args)
+    void Init()
     {
-        order = args.maxOrder;
         ComputeSetBeta();
         Shift();
     }
