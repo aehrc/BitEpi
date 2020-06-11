@@ -1,4 +1,5 @@
 #include "def.h"
+
 uint64 NchoosK(uint32 n, uint32 k)
 {
     if (k > n)
@@ -179,6 +180,49 @@ public:
         return;
     }
 
+    void RnlPerformJob(uint32 task, uint32 job, uint32 level)
+    {
+        uint32 *taskStes = tasks[task];
+        uint32 taskOrder = tasksLen[task];
+        varIdx *v = jobsInit[job].v;
+
+        uint start;
+        if (jobsInit[job].init)
+        {
+            start = v[level];
+        }
+        else if ((level > 0) && (taskStes[level] == taskStes[level - 1]))
+        {
+            start = v[level - 1] + 1;
+        }
+        else // ((level > 0) || (taskStes[level] != taskStes[level - 1]))
+        {
+            start = 0;
+        }
+
+        for (v[level] = start; v[level] < setsLen[taskStes[level]]; v[level]++)
+        {
+            if (jobsInit[job].done)
+                break;
+
+            if (taskOrder > (level + 1))
+            {
+                RnlPrintTestPerJob(task, job, level + 1);
+            }
+            else // if last level
+            {
+                printf("\n task: %8u", task);
+                for (uint32 i = 0; i < taskOrder; i++)
+                    printf("%4u%c", v[i], 'A' + taskStes[i]);
+
+                jobsInit[job].Next();
+                if (jobsInit[job].done)
+                    break;
+            }
+        }
+        return;
+    }
+
     void WorkLoadDivider()
     {
         jobCounter = 0;
@@ -290,8 +334,8 @@ public:
                 jobsInit[i].testToDo = testLastJob;
         }
 
-        WorkLoadDivider();
         PrintTestPerTask();
+        WorkLoadDivider();
         PrintTestPerJob();
     }
 
