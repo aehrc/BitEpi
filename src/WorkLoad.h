@@ -18,14 +18,15 @@ uint64 NchoosK(uint32 n, uint32 k)
 struct JobsInit
 {
 public:
-    uint64 firstTest;
-    uint64 testToDo;
-    varIdx v[MAX_ORDER];
-    uint32 task;
-    uint32 taskOrder;
-    uint64 testCounter; // used as global variable for recursive iteratation
-    bool init;          // used as global variable for recursive iteratation
-    bool done;          // used as global variable for recursive iteratation
+    uint32 jobId;        // multi threading
+    uint64 testToDo;     // number of test to be performed in this job
+    uint64 firstTest;    // initial state
+    varIdx v[MAX_ORDER]; // initial state
+    uint32 task;         // initial state
+    uint32 taskOrder;    // initial state
+    uint64 testCounter;  // used as global variable for recursive iteratation
+    bool init;           // used as global variable for recursive iteratation
+    bool done;           // used as global variable for recursive iteratation
 
     void Start()
     {
@@ -207,13 +208,13 @@ public:
 
             if (taskOrder > (level + 1))
             {
+                // **** OR
+
                 RnlPrintTestPerJob(task, job, level + 1);
             }
             else // if last level
             {
-                printf("\n task: %8u", task);
-                for (uint32 i = 0; i < taskOrder; i++)
-                    printf("%4u%c", v[i], 'A' + taskStes[i]);
+                //*** OR  CONTINGENCTY
 
                 jobsInit[job].Next();
                 if (jobsInit[job].done)
@@ -394,5 +395,37 @@ public:
             numTest += numTestPerTask[i];
         }
         return;
+    }
+
+    void MultiThread(uint32 o, uint32 numThread, uint32 firstJobIdx)
+    {
+        ThreadData *td = new ThreadData[numThread];
+        NULL_CHECK(td);
+
+        pthread_t *threads = new pthread_t[numThread];
+        NULL_CHECK(threads);
+
+        for (uint32 i = 0; i < numThread; i++)
+        {
+            td[i].epiStat = (void *)new EpiStat(this);
+            td[i].threadId = i;
+            td[i].jobId = i + firstJobIdx;
+        }
+        for (uint32 i = 0; i < numThread; i++)
+        {
+            pthread_create(&threads[i], NULL, threadFunction[o], &td[i]);
+        }
+        for (uint32 i = 0; i < numThread; i++)
+        {
+            pthread_join(threads[i], NULL);
+            if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
+            {
+                printf("\n >>> counted: %llu expected %15.0f", args.jobs[td[i].jobId].counted, args.jobs[td[i].jobId].comb);
+                ERROR("Problem in parallelisation please report on GitHub issue page");
+            }
+        }
+
+        delete[] threads;
+        delete[] td;
     }
 };
