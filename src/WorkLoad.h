@@ -167,9 +167,9 @@ public:
             }
             else // if last level
             {
-                printf("\n");
+                printf("\n task: %8u", task);
                 for (uint32 i = 0; i < taskOrder; i++)
-                    printf("%4u", v[i]);
+                    printf("%4u%c", v[i], 'A' + taskStes[i]);
 
                 jobsInit[job].Next();
                 if (jobsInit[job].done)
@@ -278,19 +278,16 @@ public:
 
         ComputeNumTest();
         printf("\n>>>%llu<<<", numTest);
-        printf("\n================");
+
         uint64 testPerJob = numTest / numJobs;
         uint64 testLastJob = testPerJob + (numTest % numJobs);
-        printf("\n>>>%llu<<<", testPerJob);
-        printf("\n>>>%llu<<<", testLastJob);
-        printf("\n================");
+
         for (uint32 i = 0; i < numJobs; i++)
         {
             jobsInit[i].firstTest = i * testPerJob;
             jobsInit[i].testToDo = testPerJob;
             if (i == (numJobs - 1))
                 jobsInit[i].testToDo = testLastJob;
-            printf("\n>>>%llu\t%llu<<<\n", jobsInit[i].firstTest, jobsInit[i].testToDo);
         }
 
         WorkLoadDivider();
