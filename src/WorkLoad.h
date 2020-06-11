@@ -18,14 +18,33 @@ struct JobsInit
 {
 public:
     uint64 firstTest;
-    uint64 numTest;
+    uint64 testToDo;
     varIdx v[MAX_ORDER];
     uint32 task;
-    uint64 testCounter;
+    uint32 taskOrder;
+    uint64 testCounter; // used as global variable for recursive iteratation
+    bool init;          // used as global variable for recursive iteratation
+    bool done;          // used as global variable for recursive iteratation
+
+    void Start()
+    {
+        testCounter = 0;
+        init = true;
+        done = false;
+    }
+    void Next()
+    {
+        init = false;
+        testCounter++;
+        if (testCounter == testToDo)
+        {
+            done = true;
+        }
+    }
     void Print()
     {
-        printf("\n%15llu%15llu [", firstTest, numTest);
-        for (uint32 i = 0; i < MAX_ORDER; i++)
+        printf("\n%15llu%15llu%8u%4u [", firstTest, testToDo, task, taskOrder);
+        for (uint32 i = 0; i < taskOrder; i++)
             printf("%8u", v[i]);
         printf("]");
     }
@@ -47,12 +66,15 @@ public:
 
     uint32 numJobs;
     JobsInit *jobsInit;
-    uint32 jobCounter;  // used as global variables
-    uint64 testCounter; // used as global variables
+    uint32 jobCounter;  // used as global variable for recursive iteratation
+    uint64 testCounter; // used as global variable for recursive iteratation
 
     // rnl: Recursive Nested Loop
-    void RnlWorkLoadDivider(uint32 *taskStes, uint32 taskOrder, varIdx *v, uint32 level)
+    void RnlWorkLoadDivider(uint32 task, varIdx *v, uint32 level)
     {
+        uint32 *taskStes = tasks[task];
+        uint32 taskOrder = tasksLen[task];
+
         uint start;
         if ((level > 0) && (taskStes[level] == taskStes[level - 1]))
         {
@@ -67,13 +89,15 @@ public:
         {
             if (taskOrder > (level + 1))
             {
-                RnlWorkLoadDivider(taskStes, taskOrder, v, level + 1);
+                RnlWorkLoadDivider(task, v, level + 1);
             }
             else // if last level
             {
                 if (testCounter == jobsInit[jobCounter].firstTest)
                 {
                     memcpy(jobsInit[jobCounter].v, v, sizeof(varIdx) * MAX_ORDER);
+                    jobsInit[jobCounter].task = task;
+                    jobsInit[jobCounter].taskOrder = taskOrder;
                     jobCounter++;
                 }
                 testCounter++;
@@ -81,10 +105,45 @@ public:
         }
     }
 
-    void RnlPrintTests(uint32 *taskStes, uint32 taskOrder, varIdx *v, uint32 level, bool init, uint64 &testCounter, uint64 &testToDo)
+    void RnlPrintTestPerTask(uint32 task, varIdx *v, uint32 level)
     {
+        uint32 *taskStes = tasks[task];
+        uint32 taskOrder = tasksLen[task];
+
         uint start;
-        if (init)
+        if ((level > 0) && (taskStes[level] == taskStes[level - 1]))
+        {
+            start = v[level - 1] + 1;
+        }
+        else // ((level > 0) || (taskStes[level] != taskStes[level - 1]))
+        {
+            start = 0;
+        }
+
+        for (v[level] = start; v[level] < setsLen[taskStes[level]]; v[level]++)
+        {
+            if (taskOrder > (level + 1))
+            {
+                RnlPrintTestPerTask(task, v, level + 1);
+            }
+            else // if last level
+            {
+                printf("\n");
+                for (uint32 i = 0; i < taskOrder; i++)
+                    printf("%4u%c", v[i], 'A' + taskStes[i]);
+            }
+        }
+        return;
+    }
+
+    void RnlPrintTestPerJob(uint32 task, uint32 job, uint32 level)
+    {
+        uint32 *taskStes = tasks[task];
+        uint32 taskOrder = tasksLen[task];
+        varIdx *v = jobsInit[job].v;
+
+        uint start;
+        if (jobsInit[job].init)
         {
             start = v[level];
         }
@@ -99,19 +158,25 @@ public:
 
         for (v[level] = start; v[level] < setsLen[taskStes[level]]; v[level]++)
         {
+            if (jobsInit[job].done)
+                break;
+
             if (taskOrder > (level + 1))
             {
-                RnlPrintTests(taskStes, taskOrder, v, level + 1, init);
-                init = false;
+                RnlPrintTestPerJob(task, job, level + 1);
             }
             else // if last level
             {
-
                 printf("\n");
-                for (uint32 i = 0; i < level + 1; i++)
+                for (uint32 i = 0; i < taskOrder; i++)
                     printf("%4u", v[i]);
+
+                jobsInit[job].Next();
+                if (jobsInit[job].done)
+                    break;
             }
         }
+        return;
     }
 
     void WorkLoadDivider()
@@ -120,30 +185,43 @@ public:
         testCounter = 0;
         for (uint32 i = 0; i < numTasks; i++)
         {
-            jobsInit[jobCounter].task = i;
-            uint32 *taskStes = tasks[i];
-            uint32 taskOrder = tasksLen[i];
             varIdx v[MAX_ORDER];
             memset(v, 0, sizeof(varIdx) * MAX_ORDER);
-            RnlWorkLoadDivider(taskStes, taskOrder, v, 0);
+            RnlWorkLoadDivider(i, v, 0);
         }
         for (uint32 i = 0; i < numJobs; i++)
             jobsInit[i].Print();
     }
 
-    void PrintTestPerJob()
+    void PrintTestPerTask()
     {
+        jobCounter = 0;
+        testCounter = 0;
         for (uint32 i = 0; i < numTasks; i++)
         {
-            jobsInit[jobCounter].task = i;
-            uint32 *taskStes = tasks[i];
-            uint32 taskOrder = tasksLen[i];
             varIdx v[MAX_ORDER];
             memset(v, 0, sizeof(varIdx) * MAX_ORDER);
-            RnlWorkLoadDivider(taskStes, taskOrder, v, 0);
+            printf("\n>>> Tests in task %u:", i);
+            RnlPrintTestPerTask(i, v, 0);
         }
+    }
+
+    void PrintTestPerJob()
+    {
         for (uint32 i = 0; i < numJobs; i++)
-            jobsInit[i].Print();
+        {
+            uint32 task = jobsInit[i].task;
+            jobsInit[i].Start();
+
+            printf("\n>>> Tests in job %u:", i);
+            while (true)
+            {
+                RnlPrintTestPerJob(task, i, 0);
+                if (jobsInit[i].done)
+                    break;
+                task++;
+            }
+        }
     }
 
     void Test()
@@ -209,13 +287,14 @@ public:
         for (uint32 i = 0; i < numJobs; i++)
         {
             jobsInit[i].firstTest = i * testPerJob;
-            jobsInit[i].numTest = testPerJob;
+            jobsInit[i].testToDo = testPerJob;
             if (i == (numJobs - 1))
-                jobsInit[i].numTest = testLastJob;
-            printf("\n>>>%llu\t%llu<<<\n", jobsInit[i].firstTest, jobsInit[i].numTest);
+                jobsInit[i].testToDo = testLastJob;
+            printf("\n>>>%llu\t%llu<<<\n", jobsInit[i].firstTest, jobsInit[i].testToDo);
         }
 
         WorkLoadDivider();
+        PrintTestPerTask();
         PrintTestPerJob();
     }
 
