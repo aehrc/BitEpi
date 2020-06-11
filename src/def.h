@@ -56,3 +56,5 @@ uint32 integerPow<1>(uint32 x);
 
 template <>
 uint32 integerPow<0>(uint32);
+
+// uint64 NchoosK(uint32 N, uint32 K);

@@ -16,3 +16,8 @@ uint32 integerPow<1>(uint32 x) { return x; }
 
 template <>
 uint32 integerPow<0>(uint32) { return 1; }
+
+// uint64 NchoosK(uint32 N, uint32 K)
+// {
+//     return 1;
+// }

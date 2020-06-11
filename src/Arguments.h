@@ -7,7 +7,7 @@ public:
     bool isPlink;                                   // [-isPlink] Is the input Plink bfile (default: false)
     char outputFilePrefix[MAX_FILE_NAME_LEN + 100]; // [-output]  Output file prefix including path and without extension
     char setFileName[MAX_FILE_NAME_LEN + 100];      // [-set]     Set file name
-    char orderFileName[MAX_FILE_NAME_LEN + 100];    // [-order]   Order file name
+    char taskFileName[MAX_FILE_NAME_LEN + 100];     // [-task]    Task file name
     uint32 numJob;                                  // [-jobs]
     uint32 firstJob;                                // [-first]
     uint32 lastJob;                                 // [-last]
@@ -40,7 +40,7 @@ public:
         printf("\n -isPlink        If presents, input is plink bfile otherwise CSV");
         printf("\n -output  [path] Output file prefix");
         printf("\n -set     [path] (Optional) Set file name (see Manual)");
-        printf("\n -order   [path] (Optional) Order file name (see Manual)");
+        printf("\n -task   [path] (Optional) Task file name (see Manual)");
         printf("\n -jobs    [int]  Number of jobs (default 1)");
         printf("\n -first   [int]  First job index on this computer (default 1)");
         printf("\n -last    [path] Last job index on this computer (default -t value)");
@@ -63,8 +63,8 @@ public:
         printf("\n Output file prefix                        %s", outputFilePrefix);
         if (setFileName[0])
             printf("\n Set file name                             %s", setFileName);
-        if (orderFileName[0])
-            printf("\n Order file name                           %s", orderFileName);
+        if (taskFileName[0])
+            printf("\n Task file name                           %s", taskFileName);
         printf("\n Number of jobs                            %u", numJob);
         printf("\n First job                                 %u", firstJob);
         printf("\n Last job                                  %u", lastJob);
@@ -119,14 +119,14 @@ public:
                     ERROR("Set file name is too long");
                 strcpy(setFileName, argv[i]);
             }
-            else if (!strcmp(argv[i], "-order"))
+            else if (!strcmp(argv[i], "-task"))
             {
                 i++;
                 if (i == argc)
-                    ERROR("Please enter order file name");
+                    ERROR("Please enter Task file name");
                 if (strlen(argv[i]) > MAX_FILE_NAME_LEN)
-                    ERROR("Order file name is too long");
-                strcpy(orderFileName, argv[i]);
+                    ERROR("Task file name is too long");
+                strcpy(taskFileName, argv[i]);
             }
             else if (!strcmp(argv[i], "-isPlink"))
             {
