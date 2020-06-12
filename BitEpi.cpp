@@ -1318,6 +1318,10 @@ public:
 		NULL_CHECK(wordCase[0]);
 		NULL_CHECK(wordCtrl[0]);
 
+		// This is to fix the extra byte in last word (note that 11 is not a valid genotype)
+		memset(wordCase[0], 0xFF, sizeof(word) * numVariables * numWordCase);
+		memset(wordCtrl[0], 0xFF, sizeof(word) * numVariables * numWordCtrl);
+
 		// convert to byte address
 		byteCase[0] = (uint8_t *)wordCase[0];
 		byteCtrl[0] = (uint8_t *)wordCtrl[0];
