@@ -25,11 +25,18 @@ int main(int argc, char *argv[])
     // args.Parse(argc, argv);
     // args.Print();
 
-    WorkLoad wl;
-    wl.Test();
-    printf("\n=======Multi Threaded==========");
-    RunAllJobs(wl);
-
+    WorkLoad *wl = new WorkLoad();
+    wl->Test();
+    printf("\n=================");
+    wl->PrintTestsOfAllTasks();
+    printf("\n=================");
+    wl->PrintTestsOfAllJobs();
+    printf("\n=================");
+    RunAllJobsSerial(wl);
+    printf("\n=================");
+    RunAllJobsOneByOne(wl);
+    printf("\n=================");
+    RunAllJobsParallel(wl);
     // TestLoopTime(5000); // 24 second
     printf("\n =========== End Test\n");
     return 0;

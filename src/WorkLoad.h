@@ -18,21 +18,25 @@ uint64 NchoosK(uint32 n, uint32 k)
 struct JobData
 {
 public:
-    uint32 jobId;        // multi threading
-    uint64 testToDo;     // number of test to be performed in this job
-    uint64 firstTest;    // initial state (processing start point)
-    varIdx v[MAX_ORDER]; // initial state (processing start point)
-    uint32 task;         // initial state (processing start point)
-    uint32 taskOrder;    // initial state (processing start point)
-    uint64 testCounter;  // used as global variable for recursive iteratation
-    bool init;           // used as global variable for recursive iteratation
-    bool done;           // used as global variable for recursive iteratation
+    uint32 jobId;            // multi threading
+    uint64 testToDo;         // number of test to be performed in this job
+    uint64 firstTest;        // initial state (processing start point)
+    varIdx vInit[MAX_ORDER]; // initial state (processing start point)
+    uint32 taskInit;         // initial state (processing start point)
+    uint32 taskOrder;        // initial state (processing start point)
+    uint64 testCounter;      // used as global variable for recursive iteratation
+    varIdx v[MAX_ORDER];     // used as global variable for recursive iteratation
+    uint32 task;             // used as global variable for recursive iteratation
+    bool init;               // used as global variable for recursive iteratation
+    bool done;               // used as global variable for recursive iteratation
 
     void Start()
     {
         testCounter = 0;
         init = true;
         done = false;
+        task = taskInit;
+        memcpy(v, vInit, sizeof(varIdx) * MAX_ORDER);
     }
     void Next()
     {
@@ -67,8 +71,8 @@ public:
     uint64 numTest;
 
     uint32 numJobs;
-    uint32 firstJob;
-    uint32 lastJob;
+    uint32 firstJob; // 0-based index inclusive
+    uint32 lastJob;  // 0-based index inclusive
     uint32 jobsToDo;
 
     JobData *jobData;
@@ -101,8 +105,8 @@ public:
             {
                 if (testCounter == jobData[jobCounter].firstTest)
                 {
-                    memcpy(jobData[jobCounter].v, v, sizeof(varIdx) * MAX_ORDER);
-                    jobData[jobCounter].task = task;
+                    memcpy(jobData[jobCounter].vInit, v, sizeof(varIdx) * MAX_ORDER);
+                    jobData[jobCounter].taskInit = task;
                     jobData[jobCounter].taskOrder = taskOrder;
                     jobCounter++;
                 }
@@ -111,7 +115,7 @@ public:
         }
     }
 
-    void RnlPrintTestPerTask(uint32 task, varIdx *v, uint32 level)
+    void RnlPrintTestsOfTask(uint32 task, varIdx *v, uint32 level)
     {
         uint32 *taskStes = tasks[task];
         uint32 taskOrder = tasksLen[task];
@@ -130,7 +134,7 @@ public:
         {
             if (taskOrder > (level + 1))
             {
-                RnlPrintTestPerTask(task, v, level + 1);
+                RnlPrintTestsOfTask(task, v, level + 1);
             }
             else // if last level
             {
@@ -142,7 +146,7 @@ public:
         return;
     }
 
-    void RnlPrintTestPerJob(uint32 task, uint32 job, uint32 level)
+    void RnlPrintTestsOfJob(uint32 task, uint32 job, uint32 level)
     {
         uint32 *taskStes = tasks[task];
         uint32 taskOrder = tasksLen[task];
@@ -169,7 +173,7 @@ public:
 
             if (taskOrder > (level + 1))
             {
-                RnlPrintTestPerJob(task, job, level + 1);
+                RnlPrintTestsOfJob(task, job, level + 1);
             }
             else // if last level
             {
@@ -185,7 +189,7 @@ public:
         return;
     }
 
-    void RnlPerformJob(uint32 task, uint32 job, uint32 level)
+    void RnlPerformTestsOfJob(uint32 task, uint32 job, uint32 level)
     {
         uint32 *taskStes = tasks[task];
         uint32 taskOrder = tasksLen[task];
@@ -212,13 +216,15 @@ public:
 
             if (taskOrder > (level + 1))
             {
-                // **** OR
-
-                RnlPrintTestPerJob(task, job, level + 1);
+                // *****OR
+                RnlPrintTestsOfJob(task, job, level + 1);
             }
             else // if last level
             {
-                //*** OR  CONTINGENCTY
+                // *****ORX
+                printf("\n task: %8u", task);
+                for (uint32 i = 0; i < taskOrder; i++)
+                    printf("%4u%c", v[i], 'A' + taskStes[i]);
 
                 jobData[job].Next();
                 if (jobData[job].done)
@@ -228,7 +234,7 @@ public:
         return;
     }
 
-    void WorkLoadDivider()
+    void DividTasksByJobs()
     {
         jobCounter = 0;
         testCounter = 0;
@@ -242,42 +248,52 @@ public:
             jobData[i].Print();
     }
 
-    void PrintTestPerTask()
+    void PrintTestsOfTask(uint32 task)
+    {
+        varIdx v[MAX_ORDER];
+        memset(v, 0, sizeof(varIdx) * MAX_ORDER);
+        printf("\n>>> Tests in task %u:", task);
+        RnlPrintTestsOfTask(task, v, 0);
+    }
+
+    void PrintTestsOfAllTasks()
     {
         jobCounter = 0;
         testCounter = 0;
         for (uint32 i = 0; i < numTasks; i++)
         {
-            varIdx v[MAX_ORDER];
-            memset(v, 0, sizeof(varIdx) * MAX_ORDER);
-            printf("\n>>> Tests in task %u:", i);
-            RnlPrintTestPerTask(i, v, 0);
+            PrintTestsOfTask(i);
         }
     }
 
-    void PrintTestPerJob()
+    void PrintTestsOfJob(uint32 job)
+    {
+        uint32 task = jobData[job].task;
+        jobData[job].Start();
+
+        printf("\n>>> Tests in job %u:", job);
+        while (true)
+        {
+            RnlPrintTestsOfJob(task, job, 0);
+            if (jobData[job].done)
+                break;
+            task++;
+        }
+    }
+
+    void PrintTestsOfAllJobs()
     {
         for (uint32 i = 0; i < numJobs; i++)
         {
-            uint32 task = jobData[i].task;
-            jobData[i].Start();
-
-            printf("\n>>> Tests in job %u:", i);
-            while (true)
-            {
-                RnlPrintTestPerJob(task, i, 0);
-                if (jobData[i].done)
-                    break;
-                task++;
-            }
+            PrintTestsOfJob(i);
         }
     }
 
     void Test()
     {
         numJobs = 4;
-        firstJob = 2;
-        lastJob = 3;
+        firstJob = 1;
+        lastJob = 2;
         jobsToDo = (lastJob - firstJob) + 1;
         numSets = 3;
         numTasks = 3;
@@ -342,9 +358,7 @@ public:
                 jobData[i].testToDo = testLastJob;
         }
 
-        PrintTestPerTask();
-        WorkLoadDivider();
-        PrintTestPerJob();
+        DividTasksByJobs();
     }
 
     ~WorkLoad()
@@ -403,22 +417,6 @@ public:
         }
         return;
     }
-
-    void RunJob(uint32 job)
-    {
-        job--; // 1-base to 0-base index
-        uint32 task = jobData[job].task;
-        jobData[job].Start();
-
-        printf("\n>>> Tests in job %u:", job);
-        while (true)
-        {
-            RnlPrintTestPerJob(task, job, 0);
-            if (jobData[job].done)
-                break;
-            task++;
-        }
-    }
 };
 
 struct ThreadData
@@ -430,30 +428,61 @@ struct ThreadData
 void *threadFunction(void *data)
 {
     ThreadData *td = (ThreadData *)data;
-    td->workLoad->RunJob(td->jobId);
+    td->workLoad->PrintTestsOfJob(td->jobId);
     return NULL;
 }
 
-void RunAllJobs(WorkLoad &workLoad)
+void RunAllJobsSerial(WorkLoad *workLoad)
+{
+    ThreadData td;
+    td.workLoad = workLoad;
+    for (uint32 j = workLoad->firstJob; j <= workLoad->lastJob; j++)
+    {
+        td.jobId = j;
+        threadFunction(&td);
+    }
+}
+
+void RunAllJobsOneByOne(WorkLoad *workLoad)
 {
 
-    ThreadData *tds = new ThreadData[workLoad.jobsToDo];
+    ThreadData *tds = new ThreadData[workLoad->jobsToDo];
     NULL_CHECK(tds);
 
-    pthread_t *threads = new pthread_t[workLoad.jobsToDo];
+    pthread_t *threads = new pthread_t[workLoad->jobsToDo];
     NULL_CHECK(threads);
 
-    for (uint32 t = 0; t < workLoad.jobsToDo; t++)
+    for (uint32 t = 0; t < workLoad->jobsToDo; t++)
     {
-        tds[t].jobId = t + workLoad.firstJob;
-        tds[t].workLoad = &workLoad;
+        tds[t].jobId = t + workLoad->firstJob;
+        tds[t].workLoad = workLoad;
         pthread_create(&threads[t], NULL, threadFunction, &tds[t]);
         pthread_join(threads[t], NULL);
     }
-    // for (uint32 t = 0; t < workLoad.jobsToDo; t++)
-    // {
-    //     pthread_join(threads[t], NULL);
-    // }
+
+    delete[] threads;
+    delete[] tds;
+}
+
+void RunAllJobsParallel(WorkLoad *workLoad)
+{
+
+    ThreadData *tds = new ThreadData[workLoad->jobsToDo];
+    NULL_CHECK(tds);
+
+    pthread_t *threads = new pthread_t[workLoad->jobsToDo];
+    NULL_CHECK(threads);
+
+    for (uint32 t = 0; t < workLoad->jobsToDo; t++)
+    {
+        tds[t].jobId = t + workLoad->firstJob;
+        tds[t].workLoad = workLoad;
+        pthread_create(&threads[t], NULL, threadFunction, &tds[t]);
+    }
+    for (uint32 t = 0; t < workLoad->jobsToDo; t++)
+    {
+        pthread_join(threads[t], NULL);
+    }
 
     delete[] threads;
     delete[] tds;
