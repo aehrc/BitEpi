@@ -27,7 +27,11 @@ int main(int argc, char *argv[])
 
     WorkLoad wl;
     wl.Test();
+    printf("\n=======Multi Threaded==========");
+    RunAllJobs(wl);
 
     // TestLoopTime(5000); // 24 second
+    printf("\n =========== End Test\n");
+    return 0;
 }
 #endif

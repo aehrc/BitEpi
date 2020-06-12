@@ -15,11 +15,6 @@ uint64 NchoosK(uint32 n, uint32 k)
     return r;
 }
 
-void *threadFunction(void *data)
-{
-    return NULL;
-}
-
 struct JobData
 {
 public:
@@ -409,22 +404,57 @@ public:
         return;
     }
 
-    void Run()
+    void RunJob(uint32 job)
     {
+        job--; // 1-base to 0-base index
+        uint32 task = jobData[job].task;
+        jobData[job].Start();
 
-        pthread_t *threads = new pthread_t[jobsToDo];
-        NULL_CHECK(threads);
-
-        for (uint32 j = firstJob; j <= lastJob; j++)
+        printf("\n>>> Tests in job %u:", job);
+        while (true)
         {
-            uint32 t = j - firstJob;
-            pthread_create(&threads[t], NULL, threadFunction, &jobData[j - 1]);
+            RnlPrintTestPerJob(task, job, 0);
+            if (jobData[job].done)
+                break;
+            task++;
         }
-        for (uint32 t = 0; t < jobsToDo; t++)
-        {
-            pthread_join(threads[t], NULL);
-        }
-
-        delete[] threads;
     }
 };
+
+struct ThreadData
+{
+    uint32 jobId;
+    WorkLoad *workLoad;
+};
+
+void *threadFunction(void *data)
+{
+    ThreadData *td = (ThreadData *)data;
+    td->workLoad->RunJob(td->jobId);
+    return NULL;
+}
+
+void RunAllJobs(WorkLoad &workLoad)
+{
+
+    ThreadData *tds = new ThreadData[workLoad.jobsToDo];
+    NULL_CHECK(tds);
+
+    pthread_t *threads = new pthread_t[workLoad.jobsToDo];
+    NULL_CHECK(threads);
+
+    for (uint32 t = 0; t < workLoad.jobsToDo; t++)
+    {
+        tds[t].jobId = t + workLoad.firstJob;
+        tds[t].workLoad = &workLoad;
+        pthread_create(&threads[t], NULL, threadFunction, &tds[t]);
+        pthread_join(threads[t], NULL);
+    }
+    // for (uint32 t = 0; t < workLoad.jobsToDo; t++)
+    // {
+    //     pthread_join(threads[t], NULL);
+    // }
+
+    delete[] threads;
+    delete[] tds;
+}
