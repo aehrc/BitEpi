@@ -15,6 +15,11 @@ bash VCF_2_EPI.sh sampleData/Hipster.vcf.bgz sampleData/Hipster.tsv 2
 #Examles on how to run cluster mode (not implemented yet)
 #./BitEpi.o  -i sampleData/data.csv -o sampleData/out4 -c -j 6 -f 3 -t 2 -a4 100
 
+#Examples to run Pvalue module
+BitEpi -i sampleData/bfile -bfile -o sampleData/bfile -sort -a2 100
+python3 Pvalue.py rnd sampleData/bfile 5 100 sampleData/pval-rnd.tsv 2
+python3 Pvalue.py epi sampleData/bfile 5 100 sampleData/pval-epi.tsv sampleData/bfile.Alpha.2.csv
+
 set +x
 
 echo ">>>>>>> Output files"
