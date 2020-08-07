@@ -226,20 +226,22 @@ DoItAll('sampleData/out.best.csv', thr, minNodeSize, maxNodeSize)
 
 Given genotype dataset in plink bfile format and list of interactions identified by BitEpi, [Pvalue.py](Pvalue.py) computes the Alpha and Beta Pvalue for each interaction (combination of SNPs) in the list of interactions.
 
-For every SNPs combination, we randomize the phenotype (response variable) many times and count the number of times where computed Alpha and Bera are greater than or equal to those for the real phenotype. The Pvalue is then calculated by dividing these count by the number of time random phenotype is generated.
+For every SNPs combination, we randomize the phenotype (response variable) many times.
+We compute alpha and beta for each permutation.
+Then we find the best distribution that fit the data.
+we test the following four scipy distributions: gamma, norm, lognorm, expon.
+Given the best distribution we computed one-tailed Pvalue (1-cdf) for alpha and beta.
+Note that different distribution is fitted for alpha and beta.
 
-**Note**
-
-- This python code is slow and is not optimized for performance.
-- Since the distribution is computed on the fly, it is not practical to measure extremely low pvalue (i.e. <10E-8).
+Note that this python code is slow and is not optimized for performance.
 
 It also implements a special mode where it randomly combines SNPs (assume they interact) and then it computes the Alpha and Beta and well as the corresponding Pvalue for them.
 
 The command line usage examples are as follow:
 
 ```
-python3 Pvalue.py rnd sampleData/bfile 5 100 sampleData/pval-rnd.tsv 2
-python3 Pvalue.py epi sampleData/bfile 5 100 sampleData/pval-epi.tsv sampleData/bfile.Alpha.2.csv
+python3 Pvalue.py rnd sampleData/bfile 5 1000 sampleData/pval-rnd.tsv 2
+python3 Pvalue.py epi sampleData/bfile 5 1000 sampleData/pval-epi.tsv sampleData/bfile.Alpha.2.csv
 ```
 
 in the first command
@@ -247,7 +249,7 @@ in the first command
 - "rnd" means to combine SNPs randomly and not from list of interactions
 - "sampleData/bfile" is the path+prefix for plink bfile
 - "5" is the number of SNP-combinations to process
-- "100" is the number of time random phenotype generated for each SNP-combination.
+- "1000" is the number of time random phenotype generated for each SNP-combination.
 - "sampleData/pval-rnd.tsv" is the output file
 - "2" is the number of SNPs in each SNP-combination
 
@@ -263,8 +265,12 @@ The output file contains the following columns:
 - SNPs: List of SNPs in the SNP-Combination
 - beta: beta value computed by Pvalue.py
 - alpha: alpha value computed by Pvalue.py
-- pval-beta: beta Pvalue computed by Pvalue.py
-- pval-alpha: alpha Pvalue computed by Pvalue.py
+- alpha-dist: name of distribution fited to the alpha values
+- alpha-distPval: Pvalue for alpha distribution fitness
+- alpha-pval: Pvalue for the alpha based on the distribution
+- beta-dist: name of distribution fited to the beta values
+- beta-distPval: Pvalue for beta distribution fitness
+- beta-pval: Pvalue for the beta based on the distribution
 
 # Cite BitEpi
 
