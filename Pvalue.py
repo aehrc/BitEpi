@@ -7,10 +7,90 @@ import pandas as pd
 # see https://github.com/limix/pandas-plink/issues/18
 from pandas_plink import read_plink
 
+import scipy
+import scipy.stats
+
 # Set the random seed
 seedMax = 2**32 - 1
 seed = int(time.time()*10000000) % seedMax
 np.random.seed(seed)
+
+# https://www.hackdeploy.com/fitting-probability-distributions-with-python/
+
+
+class Distribution(object):
+
+    def __init__(self, dist_names_list=[]):
+        self.dist_names = ['gamma', 'norm', 'lognorm', 'expon']
+        self.dist_results = []
+        self.params = {}
+
+        self.DistributionName = ""
+        self.PValue = 0
+        self.Param = None
+
+        self.isFitted = False
+
+    def Fit(self, y):
+        self.dist_results = []
+        self.params = {}
+        for dist_name in self.dist_names:
+            dist = getattr(scipy.stats, dist_name)
+            param = dist.fit(y)
+
+            self.params[dist_name] = param
+            # Applying the Kolmogorov-Smirnov test
+            D, p = scipy.stats.kstest(y, dist_name, args=param)
+            self.dist_results.append((dist_name, p))
+
+        # select the best fitted distribution
+        sel_dist, p = (max(self.dist_results, key=lambda item: item[1]))
+        # store the name of the best fit and its p value
+        self.DistributionName = sel_dist
+        self.PValue = p
+
+        self.isFitted = True
+        return self.DistributionName, self.PValue
+
+    def Pvalue(self, obs):
+        if self.isFitted:
+            dist_name = self.DistributionName
+            param = self.params[dist_name]
+            # initiate the scipy distribution
+            dist = getattr(scipy.stats, dist_name)
+            return (1 - dist.cdf(obs, *param[:-2], loc=param[-2], scale=param[-1]))
+        else:
+            raise ValueError('Must first run the Fit method.')
+
+    # fit the best distribution and compute pvalue for the observation
+    def FitPval(self, y, obs, statName):
+        self.dist_results = []
+        self.params = {}
+        for dist_name in self.dist_names:
+            dist = getattr(scipy.stats, dist_name)
+            param = dist.fit(y)
+
+            self.params[dist_name] = param
+            # Applying the Kolmogorov-Smirnov test
+            D, p = scipy.stats.kstest(y, dist_name, args=param)
+            self.dist_results.append((dist_name, p))
+
+        # select the best fitted distribution
+        sel_dist, p = (max(self.dist_results, key=lambda item: item[1]))
+        # store the name of the best fit and its p value
+        self.DistributionName = sel_dist
+        self.PValue = p
+
+        self.isFitted = True
+
+        # calculate pvalue for the observation
+        dist_name = self.DistributionName
+        param = self.params[dist_name]
+        # initiate the scipy distribution
+        dist = getattr(scipy.stats, dist_name)
+        PValueObs = (
+            1 - dist.cdf(obs, *param[:-2], loc=param[-2], scale=param[-1]))
+        return {statName+'-dist': self.DistributionName, statName+'-distPval': self.PValue, statName+'-pval': PValueObs}
 
 # Return: A genotype datafream generated from plink bfile (BDF: Bfile DataFrame)
 
@@ -85,7 +165,7 @@ def RP(ct):
 # Compute Alpha and Beta statistics as well as corresponding pvalue for a given interactive SNPs
 
 
-def Pvalue(bdf, SNPs, numRepeat=100):
+def PvalueCnt(bdf, SNPs, numRepeat):
     ct = CT(bdf, SNPs)
     ab = AB(ct, SNPs)
     # rab for AB with random phenotype
@@ -105,6 +185,37 @@ def Pvalue(bdf, SNPs, numRepeat=100):
     pv = {'beta': bc/numRepeat, 'alpha': ac/numRepeat}
     return (ab, pv)
 
+
+def PvalueDist(bdf, SNPs, numRepeat):
+    ct = CT(bdf, SNPs)
+    ab = AB(ct, SNPs)
+    # rab for AB with random phenotype
+    rab = list()
+    for i in range(numRepeat):
+        if(i % 100 == 99):
+            print(">>> ", i, "permutation done")
+        if rndCT:
+            RP(ct)
+        else:
+            bdf['RandomPheno'] = np.random.choice([1, 2], bdf.shape[0])
+            ct = CT(bdf, SNPs, pheno='RandomPheno')
+        rab.append(AB(ct, SNPs))
+
+    dst = Distribution()
+
+    a = dst.FitPval(list(map(lambda r: r['alpha'], rab)), ab['alpha'], 'alpha')
+    b = dst.FitPval(list(map(lambda r: r['beta'], rab)), ab['beta'], 'beta')
+
+    for d in (a, b):
+        ab.update(d)
+
+    return ab
+
+
+def Pvalue(bdf, SNPs, numRepeat):
+    return PvalueDist(bdf, SNPs, numRepeat)
+    # return PvalueCnt(bdf, SNPs, numRepeat)
+
 # Compute pvalue for list of interaction (only consider top numInteraction in the file)
 
 
@@ -119,12 +230,13 @@ def EpiPvalue(bfilePrefix, epiFile, numInteraction, numRepeat):
     # compute pvalue for the top interactions
     result = list()
     for i in range(numInteraction):
+        print("Interaction:", i)
         row = epiInt.iloc[i]
-        firstCol = row[0]
         SNPs = list(row[1:].values)
-        (stat, pvalue) = Pvalue(bdf, SNPs, numRepeat)
-        result.append({'firstCol': firstCol, 'SNPs': SNPs,
-                       'stat': stat, 'pvalue': pvalue})
+        rd = {'firstCol': row[0], 'SNPs': "#".join(SNPs)}
+        pvalue = Pvalue(bdf, SNPs, numRepeat)
+        rd.update(pvalue)
+        result.append(rd)
 
     return result
 
@@ -140,12 +252,13 @@ def RndPvalue(bfilePrefix, numSNPs, numInteraction, numRepeat):
     # compute pvalue for the top interactions
     result = list()
     for i in range(numInteraction):
-        firstCol = 0
+        print("Interaction:", i)
         np.random.shuffle(varId)
         SNPs = list(varId[0:numSNPs])
-        (stat, pvalue) = Pvalue(bdf, SNPs, numRepeat)
-        result.append({'firstCol': firstCol, 'SNPs': SNPs,
-                       'stat': stat, 'pvalue': pvalue})
+        rd = {'firstCol': 0, 'SNPs': "#".join(SNPs)}
+        pvalue = Pvalue(bdf, SNPs, numRepeat)
+        rd.update(pvalue)
+        result.append(rd)
 
     return result
 
@@ -169,7 +282,9 @@ if __name__ == '__main__':
         epiFile = sys.argv[6]
         pvals = EpiPvalue(bfilePrefix, epiFile, numInteraction, numRepeat)
 
-    pd.DataFrame(list(map(lambda x: {'firstCol': x['firstCol'], 'SNPs': x['SNPs'],
-                                     'beta': x['stat']['beta'], 'alpha': x['stat']['alpha'],
-                                     'pval-beta': x['pvalue']['beta'], 'pval-alpha': x['pvalue']['alpha'], },
-                          pvals))).to_csv(outputFile, sep='\t', index=None)
+    pd.DataFrame(pvals).to_csv(outputFile, sep='\t', index=None)
+
+    # pd.DataFrame(list(map(lambda x: {'firstCol': x['firstCol'], 'SNPs': x['SNPs'],
+    #                                  'beta': x['stat']['beta'], 'alpha': x['stat']['alpha'],
+    #                                  'pval-beta': x['pvalue']['beta'], 'pval-alpha': x['pvalue']['alpha'], },
+    #                       pvals))).to_csv(outputFile, sep='\t', index=None)
