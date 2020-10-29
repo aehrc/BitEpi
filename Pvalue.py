@@ -144,24 +144,6 @@ def AB(ct, SNPs):
     return {'beta': wap, 'alpha': (wap - mlowap)}
 
 
-# Rather applying random phenotype with uniform distribution "np.random.choice([1,2], bdf.shape[0])"
-# we can use a normal distribution for probability of being case
-# performance wise it make it faster
-# But "what standard deviation" reflect original unifrom distribution is a question I cannot answer it for now.
-rndCT = False  # if true it will use this function to randomize phenotype
-sd = 0.03
-
-
-def RP(ct):
-    # pc: probability of being case
-    pc = np.random.normal(0.5, sd, ct.shape[0])
-    pc[pc > 1] = 1
-    pc[pc < 0] = 0
-    ct['pc'] = pc
-    ct.case = (ct.s * ct.pc).astype('int32')
-    ct.ctrl = (ct.s - ct.case).astype('int32')
-    ct.drop(['pc'], axis=1, inplace=True)
-
 # Compute Alpha and Beta statistics as well as corresponding pvalue for a given interactive SNPs
 
 
@@ -172,11 +154,8 @@ def PvalueCnt(bdf, SNPs, numRepeat):
     rab = list()
     for i in range(numRepeat):
 
-        if rndCT:
-            RP(ct)
-        else:
-            bdf['RandomPheno'] = np.random.choice([1, 2], bdf.shape[0])
-            ct = CT(bdf, SNPs, pheno='RandomPheno')
+        bdf['RandomPheno'] = np.random.permutation(bdf['trait'])
+        ct = CT(bdf, SNPs, pheno='RandomPheno')
         rab.append(AB(ct, SNPs))
 
     ac = len([r for r in rab if r['alpha'] > ab['alpha']])
@@ -194,11 +173,9 @@ def PvalueDist(bdf, SNPs, numRepeat):
     for i in range(numRepeat):
         if(i % 100 == 99):
             print(">>> ", i, "permutation done")
-        if rndCT:
-            RP(ct)
-        else:
-            bdf['RandomPheno'] = np.random.choice([1, 2], bdf.shape[0])
-            ct = CT(bdf, SNPs, pheno='RandomPheno')
+
+        bdf['RandomPheno'] = np.random.permutation(bdf['trait'])
+        ct = CT(bdf, SNPs, pheno='RandomPheno')
         rab.append(AB(ct, SNPs))
 
     dst = Distribution()
@@ -249,7 +226,7 @@ def RndPvalue(bfilePrefix, numSNPs, numInteraction, numRepeat):
     bdf = BDF(bfilePrefix)
     varId = bdf.columns.values[0:-2]
 
-    # compute pvalue for the top interactions
+    # compute pvalue for random interactions
     result = list()
     for i in range(numInteraction):
         print("Interaction:", i)
