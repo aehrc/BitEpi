@@ -127,6 +127,8 @@ def WAP(ct):
 
 
 def MLOWAP(ct, SNPs):
+    if len(SNPs)<2:
+        return WAP(pd.DataFrame(ct.sum()).transpose())
     lowaps = list()
     for i in range(0, len(SNPs)):
         lo = SNPs.copy()
