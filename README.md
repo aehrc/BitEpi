@@ -16,10 +16,10 @@ BitEpi implements efficient **multi-threading** (parallelization) such that each
 
 | Genotype | # Cases | # Controls |               Purity               |   Weight    | Purity \* Weight |
 | :------: | :-----: | :--------: | :--------------------------------: | :---------: | :--------------: |
-|   0/0    |    5    |     10     | ((5\*5)+(10\*10))/(15\*15) = 0.555 | 15/30 = 0.5 |      0.228       |
+|   0/0    |    5    |     10     | ((5\*5)+(10\*10))/(15\*15) = 0.555 | 15/30 = 0.5 |      0.278       |
 |   0/1    |    2    |     4      |   ((2\*2)+(4\*4))/(6\*6) = 0.555   | 6/30 = 0.2  |      0.111       |
 |   1/1    |    8    |     1      |   ((8\*8)+(1\*1))/(9\*9) = 0.802   | 9/30 = 0.3  |      0.241       |
-|          |         |            |                                    | Beta (sum): |    **0.580**     |
+|          |         |            |                                    | Beta (sum): |    **0.630**     |
 
 2-SNP, 3-SNP, and 4-SNP Beta are computed in the same way. the only difference is that there are more rows in the contingency table (9, 27 and 81 rows respectively).
 
