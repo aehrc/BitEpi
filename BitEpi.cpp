@@ -2278,7 +2278,7 @@ public:
 		for (uint32 i = 0; i < numThread; i++)
 		{
 			pthread_join(threads[i], NULL);
-			if (args.jobs[td[i].jobId].counted != args.jobs[td[i].jobId].comb)
+			if (args.jobs[td[i].jobId].counted != round(args.jobs[td[i].jobId].comb))
 			{
 				printf("\n >>> counted: %llu expected %15.0f", args.jobs[td[i].jobId].counted, args.jobs[td[i].jobId].comb);
 				ERROR("Problem in parallelisation please report on GitHub issue page");
