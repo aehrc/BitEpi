@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -exou pipefail
 
 g++ -o BitEpi.o -O3 BitEpi.cpp csvparser.c -pthread
 chmod 777 BitEpi.o
