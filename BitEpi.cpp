@@ -25,6 +25,7 @@ typedef int int32;
 typedef unsigned int varIdx;
 typedef unsigned short int sampleIdx; // This type used in contingency table. This table should be kept in the cache so choose the smallest possible type here. Note that short int is 16 bit and can deal with up to 2^16 (~65,000) samples.
 typedef unsigned long long int word;  // for parallel processing
+typedef std::float_t phenofloat; // A float to represent the continuous phenotype. Try to keep this as small as possible.
 
 // we use 2 bits (4 states) to represent a genotype. However a genotype has only 3 states.
 // for 4-SNP, blow table is used to translate (4 states)^(4 SNPs) state to (3 states)^(4 SNPs)
@@ -41,7 +42,7 @@ template <>
 uint32_t integerPow<1>(uint32_t x) { return x; }
 template <>
 uint32_t integerPow<0>(uint32_t) { return 1; }
-#define P2(X) (X * X)
+#define P2(X) ((X) * (X))
 #define P3(X) (X * X * X)
 #define P4(X) (X * X * X * X)
 
@@ -141,6 +142,7 @@ struct ARGS
 	bool best;					  // should we compute the best intractions for each SNPs
 	bool betaGiven[MAX_ORDER];	  // [N] if beta N is given in the parameters
 	bool alphaGiven[MAX_ORDER];	  // [N] if alpha N is given in the parameters
+	bool continuousPhenotype;	  // if the phenotype is continuous
 
 	double beta[MAX_ORDER];
 	double alpha[MAX_ORDER];
@@ -462,6 +464,7 @@ struct ARGS
 		printf(" -k [path]  Path to the key (aws)\n");
 #endif
 		printf(" -best      find the best interactions for each SNP\n");
+		printf(" -cont      Assume the phenotype is continuous\n");
 		printf(" -b1 [thr]  Compute 1-SNP beta test\n");
 		printf(" -b2 [thr]  Compute 2-SNP beta test\n");
 		printf(" -b3 [thr]  Compute 3-SNP beta test\n");
@@ -660,8 +663,15 @@ struct ARGS
 				best = true;
 				continue;
 			}
+			
+			// read cont flag
+			if (!strcmp(argv[i], "-cont"))
+			{
+				continuousPhenotype = true;
+				continue;
+			}
 
-			// read best flag
+			// read sort flag
 			if (!strcmp(argv[i], "-sort"))
 			{
 				sprintf(clusterCmd, "%s -sort", clusterCmd);
@@ -941,6 +951,8 @@ struct ARGS
 		}
 		if (best)
 			printf("\n best");
+		if (continuousPhenotype)
+			printf("\n cont");
 		if (sort)
 			printf("\n sort");
 		for (uint32 o = 0; o < MAX_ORDER; o++)
@@ -1202,6 +1214,7 @@ public:
 	}
 };
 
+template <bool continuousPhenotype>
 class Dataset
 {
 	// contigency table index translation
@@ -1213,6 +1226,7 @@ public:
 	uint32 order;
 
 	bool *labels;
+	phenofloat *phenotypes;
 
 	sampleIdx numSamples;
 
@@ -1242,7 +1256,11 @@ public:
 
 	void FreeMemory(ARGS *args)
 	{
-		delete[] labels;
+		if (continuousPhenotype) {
+			delete[] phenotypes;
+		} else {
+			delete[] labels;
+		}
 
 		for (uint32 i = 0; i < numVariables; i++)
 			delete[] nameVariable[i];
@@ -1279,25 +1297,35 @@ public:
 		return lines;
 	}
 	/**
-	*sampleClasses contains the class for each sample, false for control, true for case.
+	*sampleValues contains the value for each sample, a float or a bool.
 	*snpLabels contains the string representing each snp label
 	*genoytypes contains a vector for each snp which contains the genotype each sample has for that snp.
 	*	0 is homozygous for reference, 1 is heterozygous, and 2 is homozygous for the variant
 	*/
-	void prepareDataset(std::vector<bool> &sampleClasses, std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
+	template <typename phenotypeType>
+	void prepareDataset(std::vector<phenotypeType> &sampleValues, std::vector<std::string> &snpLabels, std::vector<std::vector<uint8_t>> &genotypes)
 	{
-		numSamples = sampleClasses.size();
+		numSamples = sampleValues.size();
 		if (numSamples >= pow(2, sizeof(sampleIdx) * 8))
 			ERROR("Change sampleIdx type to support the number of samples exist in dataset");
 
 		numVariables = snpLabels.size();
-		numCase = std::count(sampleClasses.begin(), sampleClasses.end(), true);
+		numCase = continuousPhenotype ? numSamples : std::count(sampleValues.begin(), sampleValues.end(), true);
 		numCtrl = numSamples - numCase;
 
-		//prepare sample class labels array
-		labels = new bool[numSamples];
-		NULL_CHECK(labels);
-		std::copy(sampleClasses.begin(), sampleClasses.end(), labels);
+		//prepare sample phenotypes array
+		if (continuousPhenotype)
+		{
+			phenotypes = new phenofloat[numSamples];
+			NULL_CHECK(phenotypes);
+			std::copy(sampleValues.begin(), sampleValues.end(), phenotypes);
+		}
+		else
+		{
+			labels = new bool[numSamples];
+			NULL_CHECK(labels);
+			std::copy(sampleValues.begin(), sampleValues.end(), labels);
+		}
 
 		// find number of word and byte per variable in Case and Ctrl
 		numWordCase = numCase / byte_in_word;
@@ -1343,7 +1371,7 @@ public:
 
 			for (sampleIdx i = 0; i < numSamples; i++)
 			{
-				if (sampleClasses[i])
+				if (continuousPhenotype || sampleValues[i])
 				{
 					byteCase[0][CaseIndex(SNP, idxCase)] = genotypes[SNP][i];
 					idxCase++;
@@ -1357,11 +1385,12 @@ public:
 		}
 
 		std::cout << "There are " << snpLabels.size() << " SNPs" << std::endl;
-		std::cout << "There are " << sampleClasses.size() << " samples" << std::endl;
+		std::cout << "There are " << sampleValues.size() << " samples" << std::endl;
 		std::cout << "There are " << numCase << " Cases" << std::endl;
 		std::cout << "There are " << numCtrl << " Controls" << std::endl;
 	}
 
+	template <typename phenotypeType>
 	void ReadDatasetBfile(const char *fn)
 	{
 		std::string filename = std::string(fn);
@@ -1372,7 +1401,7 @@ public:
 		std::cout << "loading dataset " << filename << ".bed, "
 				  << filename << ".bim, " << filename << ".fam" << std::endl;
 
-		std::vector<bool> sampleClasses;
+		std::vector<phenotypeType> sampleValues;
 		std::vector<std::string> snpLabels;
 		std::vector<std::vector<uint8_t>> genotypes;
 		//get variant labels
@@ -1397,13 +1426,23 @@ public:
 			ERROR("could not open associated .fam file");
 		while (std::getline(sampleFile, line))
 		{
-			std::string classLabel = line.substr(line.find_last_not_of(" \v\f\t\r\n"), 1);
-			if (classLabel == "1")
-				sampleClasses.push_back(false);
-			else if (classLabel == "2")
-				sampleClasses.push_back(true);
-			else
-				ERROR("Phenotype type value not control (1) or case (2) in .fam file")
+			std::string valueString = line.substr(line.find_last_not_of(" \v\f\t\r\n"), 1);
+			if (continuousPhenotype) {
+				float value;
+				uint32 read = sscanf(valueString.c_str(), "%f", &value);
+				if (read != 1)
+				{
+					ERROR("phenotype should be a float in .fam file");
+				}
+				sampleValues.push_back(static_cast<phenofloat>(value));
+			} else {
+				if (valueString == "1")
+					sampleValues.push_back(false);
+				else if (valueString == "2")
+					sampleValues.push_back(true);
+				else
+					ERROR("Phenotype type value not control (1) or case (2) in .fam file")
+			}
 		}
 		sampleFile.close();
 
@@ -1411,8 +1450,8 @@ public:
 		std::ifstream bedFile(filename + ".bed", std::ios::binary);
 		if (!bedFile.is_open())
 			ERROR("could not open associated .bed file");
-		uint32_t chunkSize = sampleClasses.size() / 4;
-		if (sampleClasses.size() % 4 != 0)
+		uint32_t chunkSize = sampleValues.size() / 4;
+		if (sampleValues.size() % 4 != 0)
 			chunkSize++;
 		char *buffer = new char[chunkSize];
 		genotypes.reserve(snpLabels.size());
@@ -1440,19 +1479,20 @@ public:
 				gs.push_back(convert[(buffer[j] >> 6) & 3]);
 			}
 			//discard the last samples that were created to pad out the 8 bits
-			gs.resize(sampleClasses.size());
+			gs.resize(sampleValues.size());
 		}
 
-		prepareDataset(sampleClasses, snpLabels, genotypes);
+		prepareDataset(sampleValues, snpLabels, genotypes);
 		return;
 	}
 
 	// This function read data from file
+	template <typename phenotypeType>
 	void ReadDatasetCSV(const char *fn)
 	{
 		printf("\n loading dataset %s", fn);
 
-		std::vector<bool> sampleClasses;
+		std::vector<phenotypeType> sampleValues;
 		std::vector<std::string> snpLabels;
 		std::vector<std::vector<uint8_t>> genotypes;
 
@@ -1468,14 +1508,28 @@ public:
 
 		for (sampleIdx i = 0; i < sampleColumns; i++)
 		{
-			uint8_t label;
-			uint32 read = sscanf(headerFields[i + 1], "%2u", &label);
-			if (read != 1 || label > 1)
+			if (continuousPhenotype)
 			{
-				printf("\n Given class label for %uth sample is %s", i + 1, headerFields[i + 1]);
-				ERROR("Class lable shold be 0 or 1 for controls and cases");
+				float value;
+				uint32 read = sscanf(headerFields[i + 1], "%f", &value);
+				if (read != 1)
+				{
+					printf("\n given phenotype for %uth sample is %s", i + 1, headerFields[i + 1]);
+					ERROR("phenotype should be a float");
+				}
+				sampleValues.push_back(static_cast<phenofloat>(value));
 			}
-			sampleClasses.push_back(label == 1);
+			else
+			{
+				uint8_t label;
+				uint32 read = sscanf(headerFields[i + 1], "%2u", &label);
+				if (read != 1 || label > 1)
+				{
+					printf("\n Given class label for %uth sample is %s", i + 1, headerFields[i + 1]);
+					ERROR("Class label should be 0 or 1 for controls and cases");
+				}
+				sampleValues.push_back(label == 1);
+			}
 		}
 
 		uint variable = 0;
@@ -1510,7 +1564,7 @@ public:
 
 		CsvParser_destroy(csvparser);
 
-		prepareDataset(sampleClasses, snpLabels, genotypes);
+		prepareDataset(sampleValues, snpLabels, genotypes);
 		return;
 	}
 
@@ -1526,7 +1580,10 @@ public:
 
 		for (uint32 i = 0; i < numSamples; i++)
 		{
-			fprintf(f, ",%u", labels[i] ? 1 : 0);
+			if (continuousPhenotype)
+				fprintf(f, ",%f", phenotypes[i]);
+			else
+				fprintf(f, ",%u", labels[i] ? 1 : 0);
 		}
 		fprintf(f, "\n");
 
@@ -1539,7 +1596,7 @@ public:
 
 			for (uint32 i = 0; i < numSamples; i++)
 			{
-				if (labels[i])
+				if (continuousPhenotype or labels[i])
 				{
 					fprintf(f, ",%u", byteCase[0][CaseIndex(j, idxCase)]);
 					idxCase++;
@@ -1555,6 +1612,26 @@ public:
 		fclose(f);
 		return;
 	}
+
+	void ComputeSetVariance()
+	{
+		double sum = 0;
+		for (sampleIdx i = 0; i < numSamples; i++)
+			sum += phenotypes[i];
+		double mean = sum / numSamples;
+		std::cout << "mean: " << mean << std::endl;
+
+		double variance = 0;
+		for (sampleIdx i = 0; i < numSamples; i++) {
+			variance += P2(phenotypes[i] - mean);
+		}
+		variance /= numSamples;
+		std::cout << "variance: " << variance << std::endl;
+		// Overwrite setBeta
+		setBeta = 1 - 2*variance;
+		printf("\n setBeta of the whole dataset is %f", setBeta);
+	}
+
 
 	void ComputeSetBeta()
 	{
@@ -1601,7 +1678,12 @@ public:
 			for (uint32 i = 0; i < args.numThreads; i++)
 				results[i].Init(numVariables);
 		}
-		ComputeSetBeta();
+		if (continuousPhenotype) {
+			ComputeSetVariance();
+		}
+		else {
+			ComputeSetBeta();
+		}
 		Shift();
 	}
 
@@ -1724,10 +1806,11 @@ struct ThreadData
 	uint32 jobId;	 // job Id to be executed on that threads
 };
 
+template <bool continuousPhenotype>
 class EpiStat
 {
 public:
-	Dataset *dataset;
+	Dataset<continuousPhenotype> *dataset;
 
 	ARGS args;
 	uint32 threadIdx;
@@ -1742,6 +1825,7 @@ public:
 	word *epiCaseWord[3];
 	word *epiCtrlWord[3];
 
+	std::vector<phenofloat> *contingencyFloats;
 	sampleIdx *contingencyCase;
 	sampleIdx *contingencyCtrl;
 
@@ -1808,7 +1892,7 @@ public:
 		memcpy(this, ref, sizeof(EpiStat));
 	}
 
-	void Init(Dataset *d, ARGS a, void *(*tf1)(void *), void *(*tf2)(void *), void *(*tf3)(void *), void *(*tf4)(void *))
+	void Init(Dataset<continuousPhenotype> *d, ARGS a, void *(*tf1)(void *), void *(*tf2)(void *), void *(*tf3)(void *), void *(*tf4)(void *))
 	{
 		dataset = d;
 		args = a;
@@ -1828,12 +1912,20 @@ public:
 			NULL_CHECK(epiCaseWord[i]);
 			NULL_CHECK(epiCtrlWord[i]);
 		}
+		if (continuousPhenotype) {
+			contingencyFloats = new std::vector<phenofloat>[(uint32)pow(2, MAX_ORDER * 2)];
+			NULL_CHECK(contingencyFloats);
+			for (uint32 i = 0; i < (uint32)pow(2, MAX_ORDER * 2); i++)
+			{
+				contingencyFloats[i].reserve(dataset->numSamples);
+			}
+		} else {
+			contingencyCase = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
+			contingencyCtrl = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
 
-		contingencyCase = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
-		contingencyCtrl = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
-
-		NULL_CHECK(contingencyCase);
-		NULL_CHECK(contingencyCtrl);
+			NULL_CHECK(contingencyCase);
+			NULL_CHECK(contingencyCtrl);
+		}
 
 		if (args.topNalpha[o])
 		{
@@ -1855,8 +1947,12 @@ public:
 			delete[] epiCtrlWord[i];
 		}
 
-		delete[] contingencyCase;
-		delete[] contingencyCtrl;
+		if (continuousPhenotype) {
+			delete[] contingencyFloats;
+		} else {
+			delete[] contingencyCase;
+			delete[] contingencyCtrl;
+		}
 
 		if (args.topNalpha[o])
 		{
@@ -1877,6 +1973,17 @@ public:
 			contingencyTable[(variantsIn8Samples >> (byte * 8)) & 0xFF]++;
 		}
 	}
+	
+	void countVariantCombinationsContinuous(uint64_t variantsIn8Samples, uint32_t word_idx)
+	{
+		uint32_t base_idx = word_idx * 8;
+		//each of the 8 bytes contains the variants of a single sample
+		for (int byte = 0; byte < 8; byte++)
+		{
+			//add float to given byte representing a variant combination
+			contingencyFloats[(variantsIn8Samples >> (byte * 8)) & 0xFF].push_back(dataset->phenotypes[byte + base_idx]);
+		}
+	}
 
 	template <uint32_t N, bool CountCombinations = false>
 	void OR(varIdx idx)
@@ -1894,7 +2001,11 @@ public:
 
 			if (CountCombinations)
 			{
-				countVariantCombinations(contingencyCase, variants);
+				if (continuousPhenotype) {
+					countVariantCombinationsContinuous(variants, i);
+				} else {
+					countVariantCombinations(contingencyCase, variants);
+				}
 			}
 			else
 			{
@@ -1922,14 +2033,26 @@ public:
 	template <uint32_t N>
 	void resetContigencyTable()
 	{
-		size_t arraySize = (1 << (2 * N)) * sizeof(sampleIdx);
-		memset(contingencyCtrl, 0, arraySize);
-		memset(contingencyCase, 0, arraySize);
+		if (continuousPhenotype) {
+			for (uint32 i = 0; i < (uint32)pow(2, MAX_ORDER * 2); i++)
+			// TODO: Only clear the vectors that are used
+			{
+				contingencyFloats[i].clear();
+			}
+		} else {
+			size_t arraySize = (1 << (2 * N)) * sizeof(sampleIdx);
+			memset(contingencyCtrl, 0, arraySize);
+			memset(contingencyCase, 0, arraySize);
+		}
+
 	}
 
 	template <uint32_t N>
 	double Gini()
 	{
+		if (continuousPhenotype) {
+			return Variance<N>();
+		}
 		const uint32 entry = integerPow<N>(3);
 		double beta = 0;
 
@@ -1943,6 +2066,36 @@ public:
 				beta += (P2(nCase) + P2(nCtrl)) / sum;
 		}
 		return beta / dataset->numSamples;
+	}
+
+	template <uint32_t N>
+	double Variance()
+	{
+		const uint32 cells = integerPow<N>(3);
+		double variance = 0;
+		for (uint32 i = 0; i < cells; i++)
+		{
+			uint32 index = cti[i];
+			if (contingencyFloats[index].size())
+			{
+				double sum = 0;
+				for (phenofloat &p : contingencyFloats[index])
+				{
+					sum += p;
+				}
+				double mean = sum / contingencyFloats[index].size();
+				double sumOfSquares = 0;
+				for (phenofloat &p : contingencyFloats[index])
+				{
+					sumOfSquares += P2(p - mean);
+				}
+				// At least for 1s and 0s, G = 1 - 2V
+				variance += (1 - 2 * sumOfSquares / contingencyFloats[index].size()) * contingencyFloats[index].size();
+			}
+		}
+		// So it goes in the same direction as Gini, we'll subtract from 1
+		return variance / dataset->numSamples;
+
 	}
 
 	void Epi_1(ThreadData *td)
@@ -2267,7 +2420,7 @@ public:
 
 		for (uint32 i = 0; i < numThread; i++)
 		{
-			td[i].epiStat = (void *)new EpiStat(this);
+			td[i].epiStat = (void *)new EpiStat<continuousPhenotype>(this);
 			td[i].threadId = i;
 			td[i].jobId = i + firstJobIdx;
 		}
@@ -2482,10 +2635,11 @@ public:
 	}
 };
 
+template <bool continuousPhenotype>
 void *EpiThread_1(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
-	EpiStat *epiStat = (EpiStat *)td->epiStat;
+	EpiStat<continuousPhenotype> *epiStat = (EpiStat<continuousPhenotype> *)td->epiStat;
 
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
@@ -2503,10 +2657,11 @@ void *EpiThread_1(void *t)
 	return NULL;
 }
 
+template <bool continuousPhenotype>
 void *EpiThread_2(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
-	EpiStat *epiStat = (EpiStat *)td->epiStat;
+	EpiStat<continuousPhenotype> *epiStat = (EpiStat<continuousPhenotype> *)td->epiStat;
 
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
@@ -2524,10 +2679,11 @@ void *EpiThread_2(void *t)
 	return NULL;
 }
 
+template <bool continuousPhenotype>
 void *EpiThread_3(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
-	EpiStat *epiStat = (EpiStat *)td->epiStat;
+	EpiStat<continuousPhenotype> *epiStat = (EpiStat<continuousPhenotype> *)td->epiStat;
 
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
@@ -2545,10 +2701,11 @@ void *EpiThread_3(void *t)
 	return NULL;
 }
 
+template <bool continuousPhenotype>
 void *EpiThread_4(void *t)
 {
 	ThreadData *td = (ThreadData *)t;
-	EpiStat *epiStat = (EpiStat *)td->epiStat;
+	EpiStat<continuousPhenotype> *epiStat = (EpiStat<continuousPhenotype> *)td->epiStat;
 
 	printf("\n Thread %5u processing Job %5u ...", td->threadId + 1, td->jobId + 1);
 	printf("\n");
@@ -2831,6 +2988,39 @@ void MasterProgram(ARGS args)
 #endif
 #endif
 
+template <bool continuousPhenotype>
+void runFromArgs(ARGS args)
+{
+	Dataset<continuousPhenotype> dataset;
+	if (args.readBfile)
+	{
+		if (continuousPhenotype)
+		{
+			dataset.template ReadDatasetBfile<phenofloat>(args.input);
+		} else {
+			dataset.template ReadDatasetBfile<bool>(args.input);
+		}
+	}
+	else
+		{
+			if (continuousPhenotype)
+			{
+				dataset.template ReadDatasetCSV<phenofloat>(args.input);
+			} else {
+				dataset.template ReadDatasetCSV<bool>(args.input);
+			}
+		}
+	dataset.Init(args);
+
+	EpiStat<continuousPhenotype> epiStat;
+	epiStat.Init(&dataset, args, EpiThread_1<continuousPhenotype>, EpiThread_2<continuousPhenotype>, EpiThread_3<continuousPhenotype>, EpiThread_4<continuousPhenotype>);
+
+	if (args.clusterMode)
+		epiStat.RunCluster();
+	else
+		epiStat.Run();
+}
+
 int main(int argc, char *argv[])
 {
 	printf("\n=============Start=============\n\n\n");
@@ -2848,20 +3038,11 @@ int main(int argc, char *argv[])
 #endif
 #endif
 
-	Dataset dataset;
-	if (args.readBfile)
-		dataset.ReadDatasetBfile(args.input);
-	else
-		dataset.ReadDatasetCSV(args.input);
-	dataset.Init(args);
-
-	EpiStat epiStat;
-	epiStat.Init(&dataset, args, EpiThread_1, EpiThread_2, EpiThread_3, EpiThread_4);
-
-	if (args.clusterMode)
-		epiStat.RunCluster();
-	else
-		epiStat.Run();
+	if (args.continuousPhenotype) {
+		runFromArgs<true>(args);
+	} else {
+		runFromArgs<false>(args);
+	}
 
 	printf("\n=============Finish=============\n\n\n");
 	return 0;
