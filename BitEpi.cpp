@@ -25,7 +25,7 @@ typedef int int32;
 typedef unsigned int varIdx;
 typedef unsigned short int sampleIdx; // This type used in contingency table. This table should be kept in the cache so choose the smallest possible type here. Note that short int is 16 bit and can deal with up to 2^16 (~65,000) samples.
 typedef unsigned long long int word;  // for parallel processing
-typedef std::float_t phenofloat; // A float to represent the continuous phenotype. Try to keep this as small as possible.
+typedef double phenofloat; // A float to represent the continuous phenotype. Try to keep this as small as possible.
 
 // we use 2 bits (4 states) to represent a genotype. However a genotype has only 3 states.
 // for 4-SNP, blow table is used to translate (4 states)^(4 SNPs) state to (3 states)^(4 SNPs)
@@ -1214,6 +1214,40 @@ public:
 	}
 };
 
+class OnePassPartialVariance
+{
+public:	
+	sampleIdx n;
+	double sum;
+	double squares;
+
+	OnePassPartialVariance()
+	: n(0), sum(0), squares(0)
+	{}
+
+	void update(phenofloat x)
+	{
+		n++;
+		sum += x;
+		squares += x * x;
+	}
+
+	double getVariance()
+	{
+		return getSumSquaredError() / n;
+	}
+
+	double getSumSquaredError()
+	{
+		return squares - sum * sum / n;
+	}
+
+	double getMean()
+	{
+		return sum / n;
+	}
+};
+
 template <bool continuousPhenotype>
 class Dataset
 {
@@ -1615,17 +1649,11 @@ public:
 
 	void ComputeSetVariance()
 	{
-		double sum = 0;
+		OnePassPartialVariance partialVariance;
 		for (sampleIdx i = 0; i < numSamples; i++)
-			sum += phenotypes[i];
-		double mean = sum / numSamples;
-		std::cout << "mean: " << mean << std::endl;
-
-		double variance = 0;
-		for (sampleIdx i = 0; i < numSamples; i++) {
-			variance += P2(phenotypes[i] - mean);
-		}
-		variance /= numSamples;
+			partialVariance.update(phenotypes[i]);
+		std::cout << "mean: " << partialVariance.getMean() << std::endl;
+		double variance = partialVariance.getVariance();
 		std::cout << "variance: " << variance << std::endl;
 		// Overwrite setBeta
 		setBeta = 1 - 2*variance;
@@ -1825,7 +1853,7 @@ public:
 	word *epiCaseWord[3];
 	word *epiCtrlWord[3];
 
-	std::vector<phenofloat> *contingencyFloats;
+	OnePassPartialVariance *contingencyVariances;
 	sampleIdx *contingencyCase;
 	sampleIdx *contingencyCtrl;
 
@@ -1913,12 +1941,8 @@ public:
 			NULL_CHECK(epiCtrlWord[i]);
 		}
 		if (continuousPhenotype) {
-			contingencyFloats = new std::vector<phenofloat>[(uint32)pow(2, MAX_ORDER * 2)];
-			NULL_CHECK(contingencyFloats);
-			for (uint32 i = 0; i < (uint32)pow(2, MAX_ORDER * 2); i++)
-			{
-				contingencyFloats[i].reserve(dataset->numSamples);
-			}
+			contingencyVariances = new OnePassPartialVariance[(uint32)pow(2, MAX_ORDER * 2)];
+			NULL_CHECK(contingencyVariances);
 		} else {
 			contingencyCase = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
 			contingencyCtrl = new sampleIdx[(uint32)pow(2, MAX_ORDER * 2)];
@@ -1948,7 +1972,7 @@ public:
 		}
 
 		if (continuousPhenotype) {
-			delete[] contingencyFloats;
+			delete[] contingencyVariances;
 		} else {
 			delete[] contingencyCase;
 			delete[] contingencyCtrl;
@@ -1980,8 +2004,8 @@ public:
 		//each of the 8 bytes contains the variants of a single sample
 		for (int byte = 0; byte < 8; byte++)
 		{
-			//add float to given byte representing a variant combination
-			contingencyFloats[(variantsIn8Samples >> (byte * 8)) & 0xFF].push_back(dataset->phenotypes[byte + base_idx]);
+			// Update partial variances for given byte representing a variant combination
+			contingencyVariances[(variantsIn8Samples >> (byte * 8)) & 0xFF].update(dataset->phenotypes[byte + base_idx]);
 		}
 	}
 
@@ -2034,11 +2058,8 @@ public:
 	void resetContigencyTable()
 	{
 		if (continuousPhenotype) {
-			for (uint32 i = 0; i < (uint32)pow(2, MAX_ORDER * 2); i++)
-			// TODO: Only clear the vectors that are used
-			{
-				contingencyFloats[i].clear();
-			}
+			size_t arraySize = (1 << (2 * N)) * sizeof(OnePassPartialVariance);
+			memset(contingencyVariances, 0, arraySize);
 		} else {
 			size_t arraySize = (1 << (2 * N)) * sizeof(sampleIdx);
 			memset(contingencyCtrl, 0, arraySize);
@@ -2075,27 +2096,13 @@ public:
 		double variance = 0;
 		for (uint32 i = 0; i < cells; i++)
 		{
-			uint32 index = cti[i];
-			if (contingencyFloats[index].size())
-			{
-				double sum = 0;
-				for (phenofloat &p : contingencyFloats[index])
-				{
-					sum += p;
-				}
-				double mean = sum / contingencyFloats[index].size();
-				double sumOfSquares = 0;
-				for (phenofloat &p : contingencyFloats[index])
-				{
-					sumOfSquares += P2(p - mean);
-				}
-				// At least for 1s and 0s, G = 1 - 2V
-				variance += (1 - 2 * sumOfSquares / contingencyFloats[index].size()) * contingencyFloats[index].size();
-			}
+			// At least for 1s and 0s, G = 1 - 2V
+			// Multiply by n because we're weighting by the number of samples
+			// We can bring the n out to the top level because it will sum to the total number of samples
+			// We can also bring out the multiplication because it's a constant factor
+			variance += contingencyVariances[cti[i]].getSumSquaredError();
 		}
-		// So it goes in the same direction as Gini, we'll subtract from 1
-		return variance / dataset->numSamples;
-
+		return 1 - (2 * variance) / dataset->numSamples;
 	}
 
 	void Epi_1(ThreadData *td)
