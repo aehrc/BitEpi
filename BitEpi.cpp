@@ -2131,7 +2131,7 @@ public:
 				{
 					topBeta->Add(c);
 				}
-				else if (c.power >= args.beta[OIDX])
+				else if (args.beta[OIDX] == 0 || c.power >= args.beta[OIDX])
 					c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 			// Save Beta to compute Alpha of next order
@@ -2152,7 +2152,7 @@ public:
 					{
 						topAlpha->Add(c);
 					}
-					else if (c.power >= args.alpha[OIDX])
+					else if (args.alpha[OIDX] == 0 || c.power >= args.alpha[OIDX])
 						c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 				// compute the best
@@ -2201,7 +2201,7 @@ public:
 					{
 						topBeta->Add(c);
 					}
-					else if (c.power >= args.beta[OIDX])
+					else if (args.beta[OIDX] == 0 || c.power >= args.beta[OIDX])
 						c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 				// Save Beta to compute Alpha of next order
@@ -2222,7 +2222,7 @@ public:
 						{
 							topAlpha->Add(c);
 						}
-						else if (c.power >= args.alpha[OIDX])
+						else if (args.alpha[OIDX] == 0 || c.power >= args.alpha[OIDX])
 							c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 					// compute the best
@@ -2285,7 +2285,7 @@ public:
 						{
 							topBeta->Add(c);
 						}
-						else if (c.power >= args.beta[OIDX])
+						else if (args.beta[OIDX] == 0 || c.power >= args.beta[OIDX])
 							c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 					// Save Beta to compute Alpha of next order
@@ -2307,7 +2307,7 @@ public:
 							{
 								topAlpha->Add(c);
 							}
-							else if (c.power >= args.alpha[OIDX])
+							else if (args.alpha[OIDX] == 0 || c.power >= args.alpha[OIDX])
 								c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 						// compute the best
@@ -2375,7 +2375,7 @@ public:
 							{
 								topBeta->Add(c);
 							}
-							else if (c.power >= args.beta[OIDX])
+							else if (args.beta[OIDX] == 0 || c.power >= args.beta[OIDX])
 								c.Print(topBetaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 						// compute Information Gained
@@ -2394,7 +2394,7 @@ public:
 								{
 									topAlpha->Add(c);
 								}
-								else if (c.power >= args.alpha[OIDX])
+								else if (args.alpha[OIDX] == 0 || c.power >= args.alpha[OIDX])
 									c.Print(topAlphaFile[threadIdx], dataset->nameVariable, OIDX + 1);
 
 							// compute the best
